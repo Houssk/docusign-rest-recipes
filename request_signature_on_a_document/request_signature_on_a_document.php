@@ -1,13 +1,14 @@
 <?php
     
 // Authentication information
-$email = "account_email";	// your account email
-$password = "password";		// your account password
-$integratorKey = "integrator_key";	// your account integrator key, found on (Preferences -> API page)
+// Set via a config file or just set here using constants.
+$email = DS_ACCOUNT_EMAIL;	// your account email.
+$password = DS_ACCOUNT_PW;		// your account password
+$integratorKey = DS_INTEGRATOR"integrator_key";	// your account integrator key, found on (Preferences -> API page)
 
 // transaction information
-$recipientEmail = "recipient_email"; // signer's email
-$recipientName = "recipient_name";	// signer's name
+$recipientEmail = DS_RECIPIENT_EMAIL; // signer's email
+$recipientName = DS_RECIPIENT_NAME;	// signer's name
 $documentName = "***";		// copy document with same name into this directory!
 
 // api service point
@@ -82,20 +83,21 @@ $data_string = json_encode($data);
 $file_contents = file_get_contents($documentName);
 
 // Create a multi-part request. First the form data, then the file content
-$requestBody = "\r\n"
-."\r\n"
-."--myboundary\r\n"
-."Content-Type: application/json\r\n"
-."Content-Disposition: form-data\r\n"
-."\r\n"
-."$data_string\r\n"
-."--myboundary\r\n"
-."Content-Type:application/pdf\r\n"
-."Content-Disposition: file; filename=\"$documentName\"; documentid=1 \r\n"
-."\r\n"
-."$file_contents\r\n"
-."--myboundary--\r\n"
-."\r\n";
+$requestBody = 
+	 "\r\n"
+	."\r\n"
+	."--myboundary\r\n"
+	."Content-Type: application/json\r\n"
+	."Content-Disposition: form-data\r\n"
+	."\r\n"
+	."$data_string\r\n"
+	."--myboundary\r\n"
+	."Content-Type:application/pdf\r\n"
+	."Content-Disposition: file; filename=\"$documentName\"; documentid=1 \r\n"
+	."\r\n"
+	."$file_contents\r\n"
+	."--myboundary--\r\n"
+	."\r\n";
 
 // Send to the /envelopes end point, which is relative to the baseUrl received above. 
 $curl = curl_init($baseUrl . "/envelopes" );
