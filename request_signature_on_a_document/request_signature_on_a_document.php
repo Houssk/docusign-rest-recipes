@@ -1,9 +1,10 @@
 <?php
     
 function request_signature_on_a_document(
-	$recipientEmail, // signer's email
-	$recipientName,  // signer's name -- first name last name
-    $documentName    // including directory information
+	$recipientEmail,  // signer's email
+	$recipientName,   // signer's name -- first name last name
+    $documentName,    // the "human" name for the document
+    $documentFileName // including directory information
 	) {
 	// RETURNS
 	// Associative array with elements:
@@ -86,7 +87,7 @@ function request_signature_on_a_document(
 		"status" => "sent"
 	);
 	$data_string = json_encode($data);  
-	$file_contents = file_get_contents($documentName);
+	$file_contents = file_get_contents($documentFileName);
 
 	// Create a multi-part request. First the form data, then the file content
 	$requestBody = 
