@@ -20,7 +20,7 @@ function request_signature_on_a_document(
 	// Set via a config file or just set here using constants.
 	$email = DS_ACCOUNT_EMAIL;	// your account email.
 	$password = DS_ACCOUNT_PW;		// your account password
-	$integratorKey = DS_INTEGRATOR"integrator_key";	// your account integrator key, found on (Preferences -> API page)
+	$integratorKey = DS_INTEGRATOR; // your account integrator key, found on (Preferences -> API page)
 
 	// api service point
 	$url = "https://demo.docusign.net/restapi/v2/login_information"; // change for production
@@ -45,7 +45,7 @@ function request_signature_on_a_document(
 	$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
 
 	if ( $status != 200 ) {
-		return (['ok': false, 'errMsg' : "Error calling DocuSign, status is: " . $status]);
+		return (['ok' => false, 'errMsg' => "Error calling DocuSign, status is: " . $status]);
 	}
 
 	$response = json_decode($json_response, true);
@@ -129,10 +129,10 @@ function request_signature_on_a_document(
 	$envelopeId = $response["envelopeId"];
 	
 	return [
-	            'ok' : true,
-	    'envelopeId' : $envelopeId,
-	     'accountId' : $accountId,
-	       'baseUrl' : $baseUrl
+	            'ok' => true,
+	    'envelopeId' => $envelopeId,
+	     'accountId' => $accountId,
+	       'baseUrl' => $baseUrl
     ];
 	
 }
