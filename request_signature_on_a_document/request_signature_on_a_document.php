@@ -135,4 +135,4 @@ function request_signature_on_a_document(
 	       'baseUrl' => $baseUrl
     ];
 	
-}
+} // end of function request_signature_on_a_document
