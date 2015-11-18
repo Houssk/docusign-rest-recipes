@@ -143,6 +143,19 @@ namespace DocuSignAPIWalkthrough04
 		} // end main()
 		
 		//***********************************************************************************************
+		// --- Usage ---
+		//***********************************************************************************************
+		//
+		// set request url, method, and headers.  No body needed for login api call
+		// HttpWebRequest request = initializeRequest( url, "GET", null, username, password, integratorKey);
+		
+		// read the http response
+		// string response = getResponseBody(request);
+		
+		// parse baseUrl from response body
+		// baseURL = parseDataFromResponse(response, "baseUrl");
+		
+		//***********************************************************************************************
 		// --- HELPER FUNCTIONS ---
 		//***********************************************************************************************
 		public static HttpWebRequest initializeRequest(string url, string method, string body, string email, string password, string intKey)
@@ -178,6 +191,27 @@ namespace DocuSignAPIWalkthrough04
 			dataStream.Close ();
 		}
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
+		public static string getResponseBody(HttpWebRequest request)
+		{
+			// read the response stream into a local string
+			HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse ();
+			StreamReader sr = new StreamReader(webResponse.GetResponseStream());
+			string responseText = sr.ReadToEnd();
+			return responseText;
+		}
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////
+		public static string parseDataFromResponse(string response, string searchToken)
+		{
+			// look for "searchToken" in the response body and parse its value
+			using (XmlReader reader = XmlReader.Create(new StringReader(response))) {
+				while (reader.Read()) {
+					if((reader.NodeType == XmlNodeType.Element) && (reader.Name == searchToken))
+						return reader.ReadString();
+				}
+			}
+			return null;
+		}
+		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		public static void configureMultiPartFormDataRequest(HttpWebRequest request, string xmlBody, string docName, string contentType)
 		{
 			// overwrite the default content-type header and set a boundary marker
@@ -211,27 +245,6 @@ namespace DocuSignAPIWalkthrough04
 			}
 			dataStream.Write(bodyEnd, 0, requestBodyEnd.ToString().Length);
 			dataStream.Close();
-		}
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		public static string getResponseBody(HttpWebRequest request)
-		{
-			// read the response stream into a local string
-			HttpWebResponse webResponse = (HttpWebResponse)request.GetResponse ();
-			StreamReader sr = new StreamReader(webResponse.GetResponseStream());
-			string responseText = sr.ReadToEnd();
-			return responseText;
-		}
-		/////////////////////////////////////////////////////////////////////////////////////////////////////////
-		public static string parseDataFromResponse(string response, string searchToken)
-		{
-			// look for "searchToken" in the response body and parse its value
-			using (XmlReader reader = XmlReader.Create(new StringReader(response))) {
-				while (reader.Read()) {
-					if((reader.NodeType == XmlNodeType.Element) && (reader.Name == searchToken))
-						return reader.ReadString();
-				}
-			}
-			return null;
 		}
 		/////////////////////////////////////////////////////////////////////////////////////////////////////////
 		public static string prettyPrintXml(string xml)
