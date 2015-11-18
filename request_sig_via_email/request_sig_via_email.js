@@ -18,7 +18,7 @@ var     async = require("async"),		// async module
 var 	email = "***",				// your account email
     	password = "***",			// your account password
     	integratorKey = "***",			// your Integrator Key (found on the Preferences -> API page)
-	recipientName = "***",			// recipient (signer) name
+		recipientName = "***",			// recipient (signer) name
     	documentName = "***",			// copy document with this name into same directory!
     	baseUrl = ""; 				// we will retrieve this through the Login call
 
