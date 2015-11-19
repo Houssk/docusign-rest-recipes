@@ -1,0 +1,8 @@
+#
+# Serve up the php files in this directory as regular files.
+# See http://stackoverflow.com/questions/4236951/how-to-show-php-files-as-plain-text-in-apache
+php_flag engine off 
+#This will prevent apache from executing *.php-files
+
+AddType text/plain php
+#this wil display php-files in browser (if not, browser will want to download file!)
