@@ -28,16 +28,19 @@ This recipe retrieves an envelope’s current status. The Envelope::get method r
 
 * core_recipes directory for Java, C#, and Objective-C files
 * get_envelope_status directory for other languages
+
 ### Recipients’ statuses (including signers’ statuses)
 This recipe retrieves an envelope’s current recipient status. Envelopes have statuses and so do Recipients. For example, an envelope has two recipients, the first has signed the document, but the second recipient has declined to sign. In this case the first recipient’s status would be signed, the second recipient’s status would be declined, and the envelope’s status is declined (since one recipient has declined).
 
 * core_recipes directory for Java, C#, and Objective-C files
 * get_envelope_recipient_status directory for other languages
+
 ### Tracking status changes from behind the firewall
 You’ve sent some documents for signing. How should your app automatically track the envelope’s (or envelopes’) progress and status changes from behind your firewall? You can poll the DocuSign platform or use DocuSign Connect to be notified whenever an event occurs. This recipe shows how to poll for status changes.
 
 * core_recipes directory for Java, C#, and Objective-C files
 * polling_status_changes directory for other languages
+
 ### Downloading documents
 This recipe retrieves a list of an envelope’s documents and then downloads the documents.
 
@@ -52,6 +55,7 @@ Use this technique when your app users want to use the DocuSign graphical user i
 
 * core_recipes directory for Java, C#, and Objective-C files
 * embed_the_tag_and_send_ux directory for other languages
+
 ### The “Open DocuSign” button: embed the console
 This recipe enables your app’s user to open the DocuSign console from within your app. As an option, the console can be opened focused on a specific envelope.
 
