@@ -16,16 +16,17 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.io.IOException;
+import java.io.File;
 import java.util.Base64;
 
-public class DocuSignRecipes {
+public class CoreRecipes {
 
     // TODO: Enter valid DocuSign credentials 
     public static final String UserName = "[EMAIL]";
     public static final String Password = "[PASSWORD]";
     public static final String IntegratorKey = "[INTEGRATOR_KEY]";
     
-    // for production environment update to "www.docusign.net/restapi"
+    // for production environment update to "www.docusign.net"
     public static final String BaseUrl = "https://demo.docusign.net/restapi";
     
     /*****************************************************************************************************************
@@ -447,8 +448,6 @@ public class DocuSignRecipes {
      ******************************************************************************************************************/
     public void Recipe05_ListEnvelopes() {
         
-        // TODO: THIS RECIPE IS CURRENTLY INCOMPLETE, AWAITING BUG FIX
-        
         // list of user account(s)
         List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
         
@@ -495,9 +494,23 @@ public class DocuSignRecipes {
         // for a set of existing envelopes in your account.
         //===============================================================================
         
-        
-        // TODO:  List Envelopes API needs to be fixed so that optional parameters are not required
-        
+        try 
+        {
+            // use the |accountId| we retrieved through the Login API to create the Envelope
+            String accountId = loginAccounts.get(0).getAccountId();
+            
+            // instantiate a new EnvelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi(); 
+            
+            // Call the createEnvelope() API
+            EnvelopesInformation envelopes = envelopesApi.listStatusChanges(accountId, null, null, null, null, null, null, null, null, null, "6/1/2015", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            
+            System.out.println("EnvelopesInformation: " + envelopes);
+        }
+        catch (DocuSign.Core.Client.ApiException ex)
+        {
+            System.out.println("Exception: " + ex);
+        }
         
     } // end Recipe05_ListEnvelopes()
     
@@ -513,8 +526,8 @@ public class DocuSignRecipes {
         // TODO: THIS RECIPE IS CURRENTLY INCOMPLETE, AWAITING BUG FIX
         
         // TODO: Enter envelopeId of an envelope you have access to (i.e. you sent the envelope or you're an account admin)
-        String envelopeId = "[ENVELOPE_ID]";
-        String documentId = "[DOCUMENT_ID]";
+        String envelopeId = "E124673A1A774BD9A66EE7FB056EB22D";
+        String documentId = "1";
         
         // list of user account(s)
         List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
@@ -569,14 +582,10 @@ public class DocuSignRecipes {
             // instantiate a new EnvelopeDocumentsApi object
             EnvelopeDocumentsApi envelopeDocsApi = new EnvelopeDocumentsApi();
             
-            // Call the createEnvelope() API
-            envelopeDocsApi.get(accountId, envelopeId, documentId);
+            // Call the Get Envelope Document API
+            File document = envelopeDocsApi.get(accountId, envelopeId, documentId);
             
-            
-            // TODO: Awaiting bug fix for downloading docs (API method currently returns void)
-            
-            
-            System.out.println("Documents from envelope " + envelopeId + " have been downloaded.");
+            System.out.println("Document " + documentId + " from envelope " + envelopeId + " has been downloaded to " + document.getAbsolutePath());
         }
         catch (DocuSign.Core.Client.ApiException ex)
         {
@@ -1040,6 +1049,51 @@ public class DocuSignRecipes {
     } // end Recipe09_EmbeddedConsole()
     
     
+    /*****************************************************************************************************************
+     * getLoginApi() 
+     * 
+     * Demonstrates how to make the get Login API call to retrieve your |accountId|, which is needed to create
+     * envelopes and make other API calls.
+     ******************************************************************************************************************/
+    public List<DocuSign.Core.Model.LoginAccount> getLoginApi(String username, String password, String integratorKey) {
+    
+    	// initialize the api client
+        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        apiClient.setBasePath(BaseUrl);
+        
+        // create JSON formatted auth header
+        String creds = "{\"Username\":\"" +  UserName + "\",\"Password\":\"" +  Password + "\",\"IntegratorKey\":\"" +  IntegratorKey + "\"}";
+        apiClient.addDefaultHeader("X-DocuSign-Authentication", creds);
+        
+        // assign api client to the Configuration object
+        Configuration.setDefaultApiClient(apiClient);
+        
+        //===============================================================================
+        // The Get Login method has 3 optional parameters which return additional information 
+        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
+        // |login settings| value can be "none" or "all"
+        //===============================================================================
+        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        
+        try
+        {
+            // Login method resides in the UsersApi
+            UsersApi usersApi = new UsersApi();
+            
+            // call the getLogin() API
+            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+            
+            loginAccounts = loginInfo.getLoginAccounts();
+            
+            System.out.println("LoginInformation: " + loginInfo);
+        }
+        catch (DocuSign.Core.Client.ApiException ex)
+        {
+            System.out.println("Exception: " + ex);
+        }
+    	
+    	return loginAccounts;
+    }
     
     
     //*****************************************************************
@@ -1052,9 +1106,9 @@ public class DocuSignRecipes {
         DocuSignRecipes tc = new DocuSignRecipes();
         
         // Test #1
-        System.out.println("Running test #1...\n");
-        tc.Recipe01_RequestSignatureOnDocument();
-        System.out.println("\nTest #1 Complete.\n-----------------");
+//        System.out.println("Running test #1...\n");
+//        tc.Recipe01_RequestSignatureOnDocument();
+//        System.out.println("\nTest #1 Complete.\n-----------------");
         
         // Test #2
 //        System.out.println("Running test #2...\n");
@@ -1072,9 +1126,9 @@ public class DocuSignRecipes {
 //        System.out.println("\nTest #4 Complete.\n-----------------");
         
         // Test #5
-//        System.out.println("Running test #5...\n");
-//        tc.Recipe05_ListEnvelopes();
-//        System.out.println("\nTest #5 Complete.\n-----------------");
+        System.out.println("Running test #5...\n");
+        tc.Recipe05_ListEnvelopes();
+        System.out.println("\nTest #5 Complete.\n-----------------");
         
         // Test #6
 //        System.out.println("Running test #6...\n");
