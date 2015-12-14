@@ -1,17 +1,17 @@
-/* DocuSignRecipes.java
- * @author: Ergin Dervisoglu
+/* CoreRecipes.java
  * 
- * Test Class that demonstrates how to accomplish various REST API use-cases.  
+ * Simple Class that demonstrates how to accomplish various REST API use-cases.  
  */
 
 // DocuSign imports
-import DocuSign.Core.Api.*;
-import DocuSign.Core.Model.*;
-import DocuSign.Core.Client.*;
+import com.docusign.esign.api.*;
+import com.docusign.esign.client.*;
+import com.docusign.esign.model.*;
 
 // additional imports
 import java.util.List;
 import java.util.ArrayList;
+import java.util.TimeZone;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -21,33 +21,39 @@ import java.util.Base64;
 
 public class CoreRecipes {
 
-    // TODO: Enter valid DocuSign credentials 
-    public static final String UserName = "[EMAIL]";
-    public static final String Password = "[PASSWORD]";
-    public static final String IntegratorKey = "[INTEGRATOR_KEY]";
+	// Note: Following values are class members for readability and easy testing
+    // TODO: Enter your DocuSign credentials 
+//    public static final String UserName = "[EMAIL]";
+//    public static final String Password = "[PASSWORD]";
+//    
+//    // TODO: Enter your Integrator Key (aka API key), created through your developer sandbox preferences
+//    public static final String IntegratorKey = "[INTEGRATOR_KEY]";
     
-    // for production environment update to "www.docusign.net"
+    public static final String UserName = "docusignsfdemo@gmail.com";
+    public static final String Password = "demo1234";
+    
+    // TODO: Enter your Integrator Key (aka API key), created through your developer sandbox preferences
+    public static final String IntegratorKey = "DOCU-76929b32-d254-418c-aeed-d0e786b7a8f7";	
+	
+    // for production environment update to "www.docusign.net/restapi"
     public static final String BaseUrl = "https://demo.docusign.net/restapi";
     
     /*****************************************************************************************************************
-     * Recipe01_RequestSignatureOnDocument() 
+     * RequestSignatureOnDocument()
      * 
      * This recipe demonstrates how to request a signature on a document by first making the 
      * Login API call then the Create Envelope API call.  
      ******************************************************************************************************************/
-    public void Recipe01_RequestSignatureOnDocument() {
+    public void RequestSignatureOnDocument() {
         
         // TODO: Enter signer information and path to a test file
         String signerName = "[SIGNER_NAME]";
         String signerEmail = "[SIGNER_EMAIL]";
         // point to a local document for testing
-        final String SignTest1File = "[PATH/TO/DOCUMENT/TEST.PDF]";
-        
-        // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        final String SignTest1File = "[PATH/TO/DOCUMENT/TEST.PDF]";    	
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -57,39 +63,35 @@ public class CoreRecipes {
         // assign api client to the Configuration object
         Configuration.setDefaultApiClient(apiClient);
         
+        // list of user account(s)
+        List<LoginAccount> loginAccounts = null;
+        
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
             
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
-         
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
 
         //===============================================================================
         // Step 2:  Create Envelope API (AKA Signature Request)
-        //===============================================================================
-        // A given Envelope can have multiple documents, multiple signing and data fields, and
-        // multiple recipients.  Setting envelope |status| to "created" saves the Envelope to your 
-        // draft folder, "sent" sends the request immediately. This minimal example sends one  
-        // document with one signature tab located 100 pixels right, 100 pixels down from the top 
-        // left corner of page 1, to just one recipient (signer).
         //===============================================================================
         
         // create a byte array that will hold our document bytes
@@ -98,14 +100,13 @@ public class CoreRecipes {
         try
         {
             String currentDir = System.getProperty("user.dir");
-            
             // read file from a local directory
             Path path = Paths.get(currentDir + SignTest1File);
             fileBytes = Files.readAllBytes(path);
         }
         catch (IOException ioExcp)
         {
-            // TODO: handle error
+            // handle error
             System.out.println("Exception: " + ioExcp);
             return;
         }
@@ -131,7 +132,7 @@ public class CoreRecipes {
         signer.setName(signerName);
         signer.setRecipientId("1");
         
-        // create a |signHere| tab somewhere on the document for the signer to sign
+        // create a signHere tab somewhere on the document for the signer to sign
         // default unit of measurement is pixels, can be mms, cms, inches also
         SignHere signHere = new SignHere();
         signHere.setDocumentId("1");
@@ -163,27 +164,25 @@ public class CoreRecipes {
             // instantiate a new EnvelopesApi object
             EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            EnvelopeSummary envelopeSummary = envelopesApi.create(accountId, null, null, envDef);
+            // call the createEnvelope() API
+            EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
             
             System.out.println("EnvelopeSummary: " + envelopeSummary);
-             
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         } 
-        
-    } // end Recipe01_RequestSignature()
+    } // end RequestSignatureOnDocument()
     
     /*****************************************************************************************************************
-     * Recipe02_RequestSignatureFromTemplate() 
+     * RequestSignatureFromTemplate() 
      * 
      * This recipe demonstrates how to request a signature from a template in your account.  Templates are design-time
      * objects that contain documents, tabs, routing, and recipient roles.  To run this recipe you need to provide a 
      * valid templateId from your account along with a role name that the template has configured. 
      ******************************************************************************************************************/
-    public void Recipe02_RequestSignatureFromTemplate() {
+    public void RequestSignatureFromTemplate() {
         
         // TODO: Enter signer information and template info from a template in your account
         String signerName = "[SIGNER_NAME]";
@@ -191,11 +190,8 @@ public class CoreRecipes {
         String templateId = "[TEMPLATE_ID]"; 
         String templateRoleName = "[TEMPLATE_ROLE_NAME]";
         
-        // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
-        
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -205,39 +201,35 @@ public class CoreRecipes {
         // assign api client to the Configuration object
         Configuration.setDefaultApiClient(apiClient);
         
+        // list of user account(s)
+        List<LoginAccount> loginAccounts = null;
+        
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
         
         //===============================================================================
         // Step 2:  Create Envelope API (AKA Signature Request) from a Template
-        //===============================================================================
-        // The following recipe demonstrates how to send a signature request from an 
-        // account (server) Template.  Templates are design-time objects that contain 
-        // documents, tabs, routing and workflow.  To create an envelope from a template
-        // you must specify a valid |templateId| from your account as well as the name
-        // of a template role contained in that template.  
         //===============================================================================
         
         // create a new envelope object that we will manage the signature request through
@@ -271,35 +263,31 @@ public class CoreRecipes {
             // instantiate a new EnvelopesApi object
             EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            EnvelopeSummary envelopeSummary = envelopesApi.create(accountId, null, null, envDef);
+            // call the createEnvelope() API
+            EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
             
             System.out.println("EnvelopeSummary: " + envelopeSummary);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         } 
-        
-    } // end Recipe02_RequestSignatureFromTemplate()
+    } // end RequestSignatureFromTemplate()
     
     /*****************************************************************************************************************
-     * Recipe03_GetEnvelopeInformation() 
+     * GetEnvelopeInformation() 
      * 
      * This recipe demonstrates how to retrieve real-time envelope information for an existing envelope.  Note that 
      * DocuSign has certain platform rules in place which limit how frequently you can poll for status on a given 
      * envelope.  As of this writing the current limit is once every 15 minutes for a given envelope. 
      ******************************************************************************************************************/
-    public void Recipe03_GetEnvelopeInformation() {
+    public void GetEnvelopeInformation() {
         
         // TODO: Enter envelopeId of an envelope you have access to (i.e. you sent the envelope or you're an account admin)
         String envelopeId = "[ENVELOPE_ID]";
         
-        // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
-        
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -309,27 +297,29 @@ public class CoreRecipes {
         // assign api client to the Configuration object
         Configuration.setDefaultApiClient(apiClient);
         
+        // list of user account(s)
+        List<LoginAccount> loginAccounts = null;
+        
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
@@ -337,48 +327,38 @@ public class CoreRecipes {
         //===============================================================================
         // Step 2:  Get Envelope API 
         //===============================================================================
-        // The following recipe demonstrates how to retrieve real-time envelope information 
-        // for an existing envelope.
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API to access envelope info
             String accountId = loginAccounts.get(0).getAccountId();
             
             // instantiate a new EnvelopesApi object
             EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            Envelope env = envelopesApi.get(accountId, envelopeId, creds);
+            // call the getEnvelope() API
+            Envelope env = envelopesApi.getEnvelope(accountId, envelopeId);
             
             System.out.println("Envelope: " + env);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-        
-    } // end Recipe03_GetEnvelopeInformation() 
-    
+    } // end GetEnvelopeInformation() 
     
     /*****************************************************************************************************************
-     * Recipe04_GetEnvelopeRecipientInformation() 
+     * listRecipients() 
      * 
-     * This recipe demonstrates how to retrieve real-time envelope recipient information for an existing draft or sent  
-     * envelope.  The call will return information on all recipients that are part of the envelope's routing order.  
+     * This recipe demonstrates how to retrieve real-time envelope recipient information for an existing envelope.  
+     * The call will return information on all recipients that are part of the envelope's routing order.  
      ******************************************************************************************************************/
-    public void Recipe04_GetEnvelopeRecipientInformation() {
+    public void listRecipients() {
         
         // TODO: Enter envelopeId of an envelope you have access to (i.e. you sent the envelope or you're an account admin)
-        String envelopeId = "[ENVELOPE_ID]";
-        
-        // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        String envelopeId = "[ENVELOPE_ID]";       
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -388,71 +368,68 @@ public class CoreRecipes {
         // assign api client to the Configuration object
         Configuration.setDefaultApiClient(apiClient);
         
+        // list of user account(s)
+        List<LoginAccount> loginAccounts = null;
+        
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
         
         //===============================================================================
-        // Step 2:  Get Envelope Recipient API 
+        // Step 2:  List Recipients() API 
         //===============================================================================
-        // The following recipe demonstrates how to retrieve real-time envelope information 
-        // for an existing envelope.
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API
             String accountId = loginAccounts.get(0).getAccountId();
             
             // instantiate a new EnvelopesApi object
-            EnvelopeRecipientsApi envelopeRecipsApi = new EnvelopeRecipientsApi();
+            EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            Recipients recips = envelopeRecipsApi.list(accountId, envelopeId);
+            // call the listRecipients() API
+            Recipients recips = envelopesApi.listRecipients(accountId, envelopeId);
             
             System.out.println("Recipients: " + recips);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe04_GetEnvelopeRecipientInformation()
+    } // end listRecipients()
     
     /*****************************************************************************************************************
-     * Recipe05_ListEnvelopes() 
+     * ListEnvelopes() 
      * 
      * This recipe demonstrates how to retrieve real-time envelope status and information for an existing envelopes in  
      * your account.  The returned set of envelopes can be filtered by date, status, or other properties.  
      ******************************************************************************************************************/
-    public void Recipe05_ListEnvelopes() {
+    public void ListEnvelopes() {
         
         // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        List<LoginAccount> loginAccounts = null;
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -465,24 +442,23 @@ public class CoreRecipes {
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
@@ -490,50 +466,50 @@ public class CoreRecipes {
         //===============================================================================
         // Step 2:  List Envelopes API 
         //===============================================================================
-        // The following recipe demonstrates how to retrieve real-time envelope information 
-        // for a set of existing envelopes in your account.
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API
             String accountId = loginAccounts.get(0).getAccountId();
             
             // instantiate a new EnvelopesApi object
-            EnvelopesApi envelopesApi = new EnvelopesApi(); 
+            EnvelopesApi envelopesApi = new EnvelopesApi();  
             
-            // Call the createEnvelope() API
-            EnvelopesInformation envelopes = envelopesApi.listStatusChanges(accountId, null, null, null, null, null, null, null, null, null, "6/1/2015", null, null, null, null, null, null, null, null, null, null, null, null, null, null);
+            // the list status changes call requires at least a from_date
+            EnvelopesApi.ListStatusChangesOptions options = envelopesApi.new ListStatusChangesOptions();
+            
+            // set from date to filter envelopes (ex: Dec 1, 2015)
+            options.setFromDate("2015/12/01");
+            
+            // call the listStatusChanges() API
+            EnvelopesInformation envelopes = envelopesApi.listStatusChanges(accountId, options);
             
             System.out.println("EnvelopesInformation: " + envelopes);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe05_ListEnvelopes()
+    } // end ListEnvelopes()
     
     /*****************************************************************************************************************
-     * Recipe06_GetEnvelopeDocuments() 
+     * GetEnvelopeDocuments() 
      * 
      * This recipe demonstrates how to retrieve the documents from a given envelope.  Note that if the envelope is in 
      * completed status that you have the option of downloading just the signed documents or a combined PDF that contains
      * the envelope documents as well as the envelope's auto-generated Certificate of Completion (CoC).   
      ******************************************************************************************************************/
-    public void Recipe06_GetEnvelopeDocuments() {
+    public void GetEnvelopeDocuments() {
         
-        // TODO: THIS RECIPE IS CURRENTLY INCOMPLETE, AWAITING BUG FIX
-        
-        // TODO: Enter envelopeId of an envelope you have access to (i.e. you sent the envelope or you're an account admin)
-        String envelopeId = "E124673A1A774BD9A66EE7FB056EB22D";
-        String documentId = "1";
+        // TODO: Enter envelopeId of an envelope you have access to (i.e. you sent the envelope or
+    	// you're an account admin in same account).  Also provide a valid documentId
+    	String envelopeId = "[ENVELOPE_ID]";
+    	String documentId = "[DOCUMENT_ID]";
         
         // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        List<LoginAccount> loginAccounts = null;
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -546,79 +522,73 @@ public class CoreRecipes {
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
         
         //===============================================================================
-        // Step 2:  Get Envelope Document API 
+        // Step 2:  Get Document API 
         //===============================================================================
-        // The following recipe demonstrates how to download envelope document(s). 
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API
             String accountId = loginAccounts.get(0).getAccountId();
             
-            // instantiate a new EnvelopeDocumentsApi object
-            EnvelopeDocumentsApi envelopeDocsApi = new EnvelopeDocumentsApi();
+            // instantiate a new EnvelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the Get Envelope Document API
-            File document = envelopeDocsApi.get(accountId, envelopeId, documentId);
+            // call the getDocument() API
+            File document = envelopesApi.getDocument(accountId, envelopeId, documentId);
             
             System.out.println("Document " + documentId + " from envelope " + envelopeId + " has been downloaded to " + document.getAbsolutePath());
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe06_GetEnvelopeDocuments()    
-    
+    } // end GetEnvelopeDocuments()    
     
     /*****************************************************************************************************************
-     * Recipe07_EmbeddedSending() 
+     * EmbeddedSending() 
      * 
      * This recipe demonstrates how to open the Embedded Sending view of a given envelope (AKA the Sender View).  While
      * in the sender view the user can edit the envelope by adding/deleting documents, tabs, and/or recipients before 
      * sending the envelope (signature request) out.   
      ******************************************************************************************************************/
-    public void Recipe07_EmbeddedSending() {
+    public void EmbeddedSending() {
         
         // TODO: Enter signer info and path to a test file
         String signerName = "[SIGNER_NAME]";
         String signerEmail = "[SIGNER_EMAIL]";
         
         // point to a local document for testing
-        final String SignTest1File = "[PATH/TO/DOCUMENT/TEST.PDF]";
-        
+        final String SignTest1File = "[PATH/TO/DOCUMENT/TEST.PDF]";        
+
         // we will generate this from the second API call we make
         StringBuffer envelopeId = new StringBuffer();
         
         // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        List<LoginAccount> loginAccounts = null;
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -631,35 +601,29 @@ public class CoreRecipes {
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
         
         //===============================================================================
         // Step 2:  Create Envelope API (AKA Signature Request)
-        //===============================================================================
-        // A given Envelope can have multiple documents, multiple signing and data fields, and
-        // multiple recipients.  Make sure you set the envelope's status to "created" so that
-        // we can open the embedded sending view (you cannot generate the sending view on an
-        // envelope that has already been sent). 
         //===============================================================================
         
         // create a byte array that will hold our document bytes
@@ -733,14 +697,13 @@ public class CoreRecipes {
             // instantiate a new EnvelopesApi object
             EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            EnvelopeSummary envelopeSummary = envelopesApi.create(accountId, null, null, envDef);
+            // call the createEnvelope() API
+            EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
             envelopeId.append( envelopeSummary.getEnvelopeId() );
             
             System.out.println("EnvelopeSummary: " + envelopeSummary);
-            
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
@@ -748,45 +711,38 @@ public class CoreRecipes {
         //===============================================================================
         // Step 3:  Create SenderView API 
         //===============================================================================
-        // The following recipe demonstrates how to create the Embedded Sending View 
-        // (AKA Sender View) of a given envelope.  The user requesting the sender view
-        // must be the sender of the envelope or an account administrator in the same account.
-        // Note that the view can only be generated for an envelope that's in draft state.
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API
             String accountId = loginAccounts.get(0).getAccountId();
             
-            // instantiate a new EnvelopeViewsApi object
-            EnvelopeViewsApi envelopeView = new EnvelopeViewsApi();
+            // instantiate a new EnvelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // set the url where you want the sender to go once they are done editing the envelope
+            // set the url where you want the sender to go once they are done editing/sending the envelope
             ReturnUrlRequest returnUrl = new ReturnUrlRequest();
             returnUrl.setReturnUrl("https://www.docusign.com/devcenter");
             
-            // Call the createEnvelope() API
-            ViewUrl senderView = envelopeView.createSender(accountId, envelopeId.toString(), returnUrl);
+            // call the createEnvelope() API
+            ViewUrl senderView = envelopesApi.createSenderView(accountId, envelopeId.toString(), returnUrl);
             
             System.out.println("ViewUrl: " + senderView);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe07_EmbeddedSending()
+    } // end EmbeddedSending()
     
     /*****************************************************************************************************************
-     * Recipe08_EmbeddedSigning() 
+     * EmbeddedSigning() 
      * 
      * This recipe demonstrates how to open the Embedded Signing view of a given envelope (AKA the Recipient View).  The
      * Recipient View can be used to sign document(s) directly through your UI without having to context-switch and sign
      * through the DocuSign Website.  This is done by opening the Recipient View in an iFrame for web applications or 
      * a webview for mobile apps.
      ******************************************************************************************************************/
-    public void Recipe08_EmbeddedSigning() {
+    public void EmbeddedSigning() {
         
         // TODO: Enter signer info and path to a test file
         String signerName = "[SIGNER_NAME]";
@@ -798,10 +754,10 @@ public class CoreRecipes {
         StringBuffer envelopeId = new StringBuffer();
         
         // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        List<LoginAccount> loginAccounts = null;
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -814,34 +770,29 @@ public class CoreRecipes {
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
         
         //===============================================================================
         // Step 2:  Create Envelope API (AKA Signature Request)
-        //===============================================================================
-        // A given Envelope can have multiple documents, multiple signing and data fields, and
-        // multiple recipients.  Note that you must set the |clientUseId| property to a non-null
-        // value for any recipient that will sign the document(s) through embedded signing.    
         //===============================================================================
         
         // create a byte array that will hold our document bytes
@@ -919,14 +870,14 @@ public class CoreRecipes {
             // instantiate a new EnvelopesApi object
             EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // Call the createEnvelope() API
-            EnvelopeSummary envelopeSummary = envelopesApi.create(accountId, null, null, envDef);
+            // call the createEnvelope() API
+            EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
             envelopeId.append( envelopeSummary.getEnvelopeId() );
             
             System.out.println("EnvelopeSummary: " + envelopeSummary);
             
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
@@ -934,18 +885,13 @@ public class CoreRecipes {
         //===============================================================================
         // Step 3:  Create RecipientView API 
         //===============================================================================
-        // Now that we've created a new envelope with an embedded recipient (since we set
-        // their |clientUserId| property in step #2) we can now request the recipient view 
-        //  - i.e. the embedded signing URL.   
-        //===============================================================================
-        
         try 
         {
-            // use the |accountId| we retrieved through the Login API to create the Envelope
+            // use the |accountId| we retrieved through the Login API 
             String accountId = loginAccounts.get(0).getAccountId();
             
-            // instantiate a new EnvelopeViewsApi object
-            EnvelopeViewsApi envelopeView = new EnvelopeViewsApi();
+            // instantiate a new EnvelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi();
             
             // set the url where you want the recipient to go once they are done signing
             RecipientViewRequest returnUrl = new RecipientViewRequest();
@@ -958,31 +904,30 @@ public class CoreRecipes {
             returnUrl.setRecipientId("1");
             returnUrl.setClientUserId("1001");
             
-            // Call the Create RecipientView API
-            ViewUrl recipientView = envelopeView.createRecipient(accountId, envelopeId.toString(), returnUrl);
+            // call the CreateRecipientView API
+            ViewUrl recipientView = envelopesApi.createRecipientView(accountId, envelopeId.toString(), returnUrl);
             
             System.out.println("ViewUrl: " + recipientView);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe08_EmbeddedSigning()
+    } // end EmbeddedSigning()
 
     /*****************************************************************************************************************
-     * Recipe09_EmbeddedConsole() 
+     * EmbeddedConsole() 
      * 
      * This recipe demonstrates how to open the DocuSign Console in an embedded view.  DocuSign recommends you use an 
      * iFrame for web applications and a webview for mobile apps.   
      ******************************************************************************************************************/
-    public void Recipe09_EmbeddedConsole() {
+    public void EmbeddedConsole() {
         
         // list of user account(s)
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
+        List<LoginAccount> loginAccounts = null;
         
         // initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
+        ApiClient apiClient = new ApiClient();
         apiClient.setBasePath(BaseUrl);
         
         // create JSON formatted auth header
@@ -995,24 +940,23 @@ public class CoreRecipes {
         //===============================================================================
         // Step 1:  Login() API
         //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
         try
         {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // Call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
+        	// login call available off the AuthenticationApi
+        	AuthenticationApi authApi = new AuthenticationApi();
+        	
+        	// login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
          
             // note that a given user may be a member of multiple accounts
             loginAccounts = loginInfo.getLoginAccounts();
             
             System.out.println("LoginInformation: " + loginAccounts);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
@@ -1020,81 +964,28 @@ public class CoreRecipes {
         //===============================================================================
         // Step 2:  Create ConsoleView API 
         //===============================================================================
-        // The following recipe demonstrates how to create an Embedded DocuSign Console
-        // view that you can open in an iFrame for web applications or a webview for
-        // mobile apps.  
-        //===============================================================================
         try 
         {
             // use the |accountId| we retrieved through the Login API
             String accountId = loginAccounts.get(0).getAccountId();
             
-            // instantiate a new envelopeViewsApi object
-            EnvelopeViewsApi viewApi = new EnvelopeViewsApi();
+            // instantiate a new envelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi();
             
-            // set the url where you want the sender to go once they are done editing the envelope
+            // set the url where you want the user to go once they logout of the Console
             ConsoleViewRequest returnUrl = new ConsoleViewRequest();
             returnUrl.setReturnUrl("https://www.docusign.com/devcenter");
             
-            // Call the createEnvelope() API
-            ViewUrl consoleView = viewApi.createConsole(accountId, returnUrl);
+            // call the createConsoleView() API
+            ViewUrl consoleView = envelopesApi.createConsoleView(accountId, returnUrl);
             
             System.out.println("ConsoleView: " + consoleView);
         }
-        catch (DocuSign.Core.Client.ApiException ex)
+        catch (com.docusign.esign.client.ApiException ex)
         {
             System.out.println("Exception: " + ex);
         }
-        
-    } // end Recipe09_EmbeddedConsole()
-    
-    
-    /*****************************************************************************************************************
-     * getLoginApi() 
-     * 
-     * Demonstrates how to make the get Login API call to retrieve your |accountId|, which is needed to create
-     * envelopes and make other API calls.
-     ******************************************************************************************************************/
-    public List<DocuSign.Core.Model.LoginAccount> getLoginApi(String username, String password, String integratorKey) {
-    
-    	// initialize the api client
-        DocuSign.Core.Client.ApiClient apiClient = new DocuSign.Core.Client.ApiClient();
-        apiClient.setBasePath(BaseUrl);
-        
-        // create JSON formatted auth header
-        String creds = "{\"Username\":\"" +  UserName + "\",\"Password\":\"" +  Password + "\",\"IntegratorKey\":\"" +  IntegratorKey + "\"}";
-        apiClient.addDefaultHeader("X-DocuSign-Authentication", creds);
-        
-        // assign api client to the Configuration object
-        Configuration.setDefaultApiClient(apiClient);
-        
-        //===============================================================================
-        // The Get Login method has 3 optional parameters which return additional information 
-        // in the response: |api_password|, |account_id_guid|, and |login_settings|.  
-        // |login settings| value can be "none" or "all"
-        //===============================================================================
-        List<DocuSign.Core.Model.LoginAccount> loginAccounts = null;
-        
-        try
-        {
-            // Login method resides in the UsersApi
-            UsersApi usersApi = new UsersApi();
-            
-            // call the getLogin() API
-            LoginInformation loginInfo = usersApi.getLogin(Boolean.TRUE, Boolean.FALSE, "none");
-            
-            loginAccounts = loginInfo.getLoginAccounts();
-            
-            System.out.println("LoginInformation: " + loginInfo);
-        }
-        catch (DocuSign.Core.Client.ApiException ex)
-        {
-            System.out.println("Exception: " + ex);
-        }
-    	
-    	return loginAccounts;
-    }
-    
+    } // end EmbeddedConsole()
     
     //*****************************************************************
     //*****************************************************************
@@ -1103,53 +994,52 @@ public class CoreRecipes {
     //*****************************************************************
     public static void main(String args[]) {
         
-        DocuSignRecipes tc = new DocuSignRecipes();
+        CoreRecipes recipes = new CoreRecipes();
         
         // Test #1
-//        System.out.println("Running test #1...\n");
-//        tc.Recipe01_RequestSignatureOnDocument();
-//        System.out.println("\nTest #1 Complete.\n-----------------");
+        System.out.println("Running test #1...\n");
+        recipes.RequestSignatureOnDocument();
+        System.out.println("\nTest #1 Complete.\n-----------------");
         
         // Test #2
 //        System.out.println("Running test #2...\n");
-//        tc.Recipe02_RequestSignatureFromTemplate();
+//        recipes.RequestSignatureFromTemplate();
 //        System.out.println("\nTest #2 Complete.\n-----------------");
         
         // Test #3
 //        System.out.println("Running test #3...\n");
-//        tc.Recipe03_GetEnvelopeInformation();
+//        recipes.GetEnvelopeInformation();
 //        System.out.println("\nTest #3 Complete.\n-----------------");
         
         // Test #4
 //        System.out.println("Running test #4...\n");
-//        tc.Recipe04_GetEnvelopeRecipientInformation();
+//        recipes.listRecipients();
 //        System.out.println("\nTest #4 Complete.\n-----------------");
         
         // Test #5
-        System.out.println("Running test #5...\n");
-        tc.Recipe05_ListEnvelopes();
-        System.out.println("\nTest #5 Complete.\n-----------------");
+//        System.out.println("Running test #5...\n");
+//        recipes.ListEnvelopes();
+//        System.out.println("\nTest #5 Complete.\n-----------------");
         
         // Test #6
 //        System.out.println("Running test #6...\n");
-//        tc.Recipe06_GetEnvelopeDocuments();
+//        recipes.GetEnvelopeDocuments();
 //        System.out.println("\nTest #6 Complete.\n-----------------");        
         
         // Test #7
 //        System.out.println("Running test #7...\n");
-//        tc.Recipe07_EmbeddedSending();
+//        recipes.EmbeddedSending();
 //        System.out.println("\nTest #7 Complete.\n-----------------");
 
         // Test #8
 //        System.out.println("Running test #8...\n");
-//        tc.Recipe08_EmbeddedSigning();
+//        recipes.EmbeddedSigning();
 //        System.out.println("\nTest #8 Complete.\n-----------------");
         
         // Test #9
 //        System.out.println("Running test #9...\n");
-//        tc.Recipe09_EmbeddedConsole();
+//        recipes.EmbeddedConsole();
 //        System.out.println("\nTest #9 Complete.\n-----------------");
         
     } // end main()
-    
 } // end class
