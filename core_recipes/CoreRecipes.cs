@@ -6,16 +6,16 @@ using System.Threading.Tasks;
 using System.IO;
 using Newtonsoft.Json;
 
-using DocuSign.Core.Api;
-using DocuSign.Core.Model;
-using DocuSign.Core.Client;
+using DocuSign.eSign.Api;
+using DocuSign.eSign.Model;
+using DocuSign.eSign.Client;
 
 namespace TestProj
 {
     class CoreRecipes
     {
         // Integrator Key (aka API key) is needed to authenticate your API calls.  This is an application-wide key
-        private string INTEGRATOR_KEY = "[INTEGRATOR_KEY]]";
+        private string INTEGRATOR_KEY = "[INTEGRATOR_KEY]";
 
         //////////////////////////////////////////////////////////
         // Main()
@@ -67,7 +67,7 @@ namespace TestProj
             string recipientEmail = "[RECIPIENT_EMAIL]";
 
             // the document (file) we want signed
-            const string SignTest1File = @".../../docs/SignTest1.pdf";
+            const string SignTest1File = @"[PATH/TO/DOCUMENT/TEST.PDF]";
 
             // instantiate api client with appropriate environment (for production change to www.docusign.net/restapi)
             configureApiClient("https://demo.docusign.net/restapi");
@@ -379,7 +379,7 @@ namespace TestProj
             string recipientEmail = "[RECIPIENT_EMAIL]";
 
             // the document (file) we want signed
-            const string SignTest1File = @".../../docs/SignTest1.pdf";
+            const string SignTest1File = @"[PATH/TO/DOCUMENT/TEST.PDF]";
 
             // instantiate api client with appropriate environment (for production change to www.docusign.net/restapi)
             configureApiClient("https://demo.docusign.net/restapi");
@@ -472,7 +472,7 @@ namespace TestProj
             string recipientEmail = "[RECIPIENT_EMAIL]";
 
             // the document (file) we want signed
-            const string SignTest1File = @".../../docs/SignTest1.pdf";
+            const string SignTest1File = @"[PATH/TO/DOCUMENT/TEST.PDF]";
 
             // instantiate api client with appropriate environment (for production change to www.docusign.net/restapi)
             configureApiClient("https://demo.docusign.net/restapi");
@@ -608,16 +608,16 @@ namespace TestProj
             ApiClient apiClient = new ApiClient(basePath);
 
             // set client in global config so we don't need to pass it to each API object.
-            Configuration.DefaultApiClient = apiClient;
+            Configuration.Default.ApiClient = apiClient;
         }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         public string loginApi(string usr, string pwd)
         {
             // we set the api client in global config when we configured the client 
-            ApiClient apiClient = Configuration.DefaultApiClient;
+            ApiClient apiClient = Configuration.Default.ApiClient;
             string authHeader = "{\"Username\":\"" + usr + "\", \"Password\":\"" + pwd + "\", \"IntegratorKey\":\"" + INTEGRATOR_KEY + "\"}";
-            apiClient.AddDefaultHeader("X-DocuSign-Authentication", authHeader);
+            Configuration.Default.AddDefaultHeader("X-DocuSign-Authentication", authHeader);
 
             // we will retrieve this from the login() results
             string accountId = null;
