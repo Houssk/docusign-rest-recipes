@@ -1,4 +1,4 @@
-# DocuSign-Recipes
+# DocuSign Signature REST API Recipes
 Source files for the recipes
 
 ## Client Libraries
