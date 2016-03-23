@@ -2,7 +2,7 @@
 Source files for the recipes
 
 ## Client Libraries
-Client libraries for [Java](https://github.com/docusign/docusign-java-client), [C#](https://github.com/docusign/docusign-csharp-client), and [Objective-C](https://github.com/docusign/docusign-objc-client) are available on GitHub.
+Client libraries for [Java](https://github.com/docusign/docusign-java-client), [C#](https://github.com/docusign/docusign-csharp-client), [Objective-C](https://github.com/docusign/docusign-objc-client), [PHP](https://github.com/docusign/docusign-php-client), and [Node.js](https://github.com/docusign/docusign-node-client) are available on GitHub.
 
 Notice a bug or issue? Please submit an issue report. Or even better, quality pull requests are always appreciated!
 
