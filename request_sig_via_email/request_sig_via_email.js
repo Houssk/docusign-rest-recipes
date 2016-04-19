@@ -3,136 +3,161 @@
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)
 //  2. Change "***" to appropriate values
-//  3. Install async and request packages
+//  3. Install docusign-esign, async, and fs packages
+//     npm install docusign-esign
 //     npm install async
-//     npm install request
 //     npm install fs
-//  4. execute
+//  4. Ensure sure 'blank.pdf' exists in the same directory, or create a blank pdf yourself
+//  5. Execute
 //     node example.js 
 //
 
-var     async = require("async"),		// async module
-        request = require("request"),		// request module
-    	fs = require("fs");			// fs module
+var docusign = require('docusign-esign'),
+	async = require('async'),
+	fs = require('fs'),
+	path = require('path');
 
-var 	email = "***",				// your account email
-    	password = "***",			// your account password
-    	integratorKey = "***",			// your Integrator Key (found on the Preferences -> API page)
-		recipientName = "***",			// recipient (signer) name
-    	documentName = "***",			// copy document with this name into same directory!
-    	baseUrl = ""; 				// we will retrieve this through the Login call
+var integratorKey = '***',	// Integrator Key associated with your DocuSign Integration
+	email = '***',			// Email for your DocuSign Account
+	password = '***',		// Password for your DocuSign Account
+	recipientName = '***',	// Recipient's Full Name
+	recipientEmail = '***', // Recipient's Email
+	docusignEnv = 'demo',	// DocuSign Environment generally demo for testing purposes ('www' == production)
+	fileToSign = 'blank.pdf',
+	baseUrl = 'https://' + docusignEnv + '.docusign.net/restapi';
+
+
+// relative path to PDF (can also be many other filetypes) 
 
 async.waterfall(
   [
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Step 1: Login (used to retrieve your accountId and baseUrl)
-    /////////////////////////////////////////////////////////////////////////////////////
-    function(next) {
-		var url = "https://demo.docusign.net/restapi/v2/login_information";
-		var body = "";	// no request body for login api call
-		
-		// set request url, method, body, and headers
-		var options = initializeRequest(url, "GET", body, email, password);
-		
-		// send the request...
-		request(options, function(err, res, body) {
-			if(!parseResponseBody(err, res, body)) {
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Step 1: Login (used to retrieve your accountId and account baseUrl)
+	/////////////////////////////////////////////////////////////////////////////////////
+
+	function login(next) {
+
+		// initialize the api client
+		var apiClient = new docusign.ApiClient();
+		apiClient.setBasePath(baseUrl);
+
+		// create JSON formatted auth header
+		var creds = JSON.stringify({
+		  Username: email,
+		  Password: password,
+		  IntegratorKey: integratorKey
+		});
+		apiClient.addDefaultHeader('X-DocuSign-Authentication', creds);
+
+		// assign api client to the Configuration object
+		docusign.Configuration.default.setDefaultApiClient(apiClient);
+
+		// login call available off the AuthenticationApi
+		var authApi = new docusign.AuthenticationApi();
+
+		// login has some optional parameters we can set
+		var loginOps = new authApi.LoginOptions();
+		loginOps.setApiPassword('true');
+		loginOps.setIncludeAccountIdGuid('true');
+		authApi.login(loginOps, function (err, loginInfo, response) {
+			if (err) {
+				console.error(err.response ? err.response.error : err);
 				return;
 			}
-			baseUrl = JSON.parse(body).loginAccounts[0].baseUrl;
-			next(null); // call next function
+			console.log('Login Info');
+			console.log(JSON.stringify(loginInfo,null,2));
+			if (loginInfo) {
+				// list of user account(s)
+				// note that a given user may be a member of multiple accounts
+				var loginAccounts = loginInfo.getLoginAccounts();
+				console.log('LoginInformation: ' + JSON.stringify(loginAccounts));
+				next(null, loginAccounts);
+			}
 		});
 	},
-    
-    /////////////////////////////////////////////////////////////////////////////////////
-    // Step 2: Request Signature on a PDF Document
-    /////////////////////////////////////////////////////////////////////////////////////
-    function(next) {   	
-    	var url = baseUrl + "/envelopes";
-    	// following request body will place 1 signature tab 100 pixels to the right and
-    	// 100 pixels down from the top left of the document that you send in the request
-		var body = {
-			"recipients": {
-				"signers": [{
-					"email": email,
-					"name": recipientName,
-					"recipientId": 1,
-					"tabs": {
-						"signHereTabs": [{
-							"xPosition": "100",
-							"yPosition": "100",
-							"documentId": "1",
-							"pageNumber": "1"																					
-						}]
-					}
-				}]
-			},
-			"emailSubject": 'DocuSign API - Signature Request on Document Call',
-			"documents": [{
-				"name": documentName,
-				"documentId": 1,
-			}],
-			"status": "sent",
-		};
-		
-		// set request url, method, body, and headers
-		var options = initializeRequest(url, "POST", body, email, password);
 	
-		// change default Content-Type header from "application/json" to "multipart/form-data"
-		options.headers["Content-Type"] = "multipart/form-data";
-		
-		// configure a multipart http request with JSON body and document bytes
-		options.multipart = [{
-					"Content-Type": "application/json",
-					"Content-Disposition": "form-data",
-					"body": JSON.stringify(body),
-				}, {
-					"Content-Type": "application/pdf",
-					'Content-Disposition': 'file; filename="' + documentName + '"; documentId=1',
-					"body": fs.readFileSync(documentName),
-				}
-		];
+	/////////////////////////////////////////////////////////////////////////////////////
+	// Step 2: Request Signature on a PDF Document
+	/////////////////////////////////////////////////////////////////////////////////////
 
-		// send the request...
-		request(options, function(err, res, body) {
-			parseResponseBody(err, res, body);
+	function requestSignature(loginAccounts, next){
+		console.log('requestSignature');
+		// create a byte array that will hold our document bytes
+		var fileBytes = null;
+		try {
+			// read file from a local directory
+			fileBytes = fs.readFileSync(path.resolve([__filename, '..', fileToSign].join('/')));
+		} catch (ex) {
+			// handle error
+			console.log('Exception: ' + ex);
+			return;
+		}
+
+		// create an envelope that will store the document(s), field(s), and recipient(s)
+		var envDef = new docusign.EnvelopeDefinition();
+		envDef.setEmailSubject('Please sign this document sent from the DocuSign Node SDK)');
+
+		// add a document to the envelope
+		var doc = new docusign.Document();
+		var base64Doc = new Buffer(fileBytes).toString('base64');
+		doc.setDocumentBase64(base64Doc);
+		doc.setName('DocuSign API - Signature Request on Document Call'); // can be different from actual file name
+		doc.setDocumentId('1'); // hardcode so we can easily refer to this document later
+
+		var docs = [];
+		docs.push(doc);
+		envDef.setDocuments(docs);
+
+		// add a recipient to sign the document, identified by name and email we used above
+		var signer = new docusign.Signer();
+		signer.setEmail(recipientEmail);
+		signer.setName(recipientName);
+		signer.setRecipientId('1');
+
+		// create a signHere tab somewhere on the document for the signer to sign
+		// default unit of measurement is pixels, can be mms, cms, inches also
+		var signHere = new docusign.SignHere();
+		signHere.setDocumentId('1');
+		signHere.setPageNumber('1');
+		signHere.setRecipientId('1');
+		signHere.setXPosition('100');
+		signHere.setYPosition('100');
+
+		// can have multiple tabs, so need to add to envelope as a single element list
+		var signHereTabs = [];
+		signHereTabs.push(signHere);
+		var tabs = new docusign.Tabs();
+		tabs.setSignHereTabs(signHereTabs);
+		signer.setTabs(tabs);
+
+		// add recipients (in this case a single signer) to the envelope
+		envDef.setRecipients(new docusign.Recipients());
+		envDef.getRecipients().setSigners([]);
+		envDef.getRecipients().getSigners().push(signer);
+
+		// send the envelope by setting |status| to "sent". To save as a draft set to "created"
+		// - note that the envelope will only be 'sent' when it reaches the DocuSign server with the 'sent' status (not in the following call)
+		envDef.setStatus('sent');
+
+		// use the |accountId| we retrieved through the Login API to create the Envelope
+		var loginAccount = new docusign.LoginAccount();
+		loginAccount = loginAccounts[0];
+		var accountId = loginAccount.accountId;
+
+		// instantiate a new EnvelopesApi object
+		var envelopesApi = new docusign.EnvelopesApi();
+
+		// call the createEnvelope() API
+		envelopesApi.createEnvelope(accountId, envDef, null, function (error, envelopeSummary, response) {
+			if (error) {
+				console.error('Error: ' + error);
+				return;
+			}
+
+			if (envelopeSummary) {
+				console.log('EnvelopeSummary: ' + JSON.stringify(envelopeSummary,null,2));
+			}
 		});
-	} // end function    
-]);
-
-//***********************************************************************************************
-// --- HELPER FUNCTIONS ---
-//***********************************************************************************************
-function initializeRequest(url, method, body, email, password) {	
-	var options = {
-		"method": method,
-		"uri": url,
-		"body": body,
-		"headers": {}
-	};
-	addRequestHeaders(options, email, password);
-	return options;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-function addRequestHeaders(options, email, password) {	
-	// JSON formatted authentication header (XML format allowed as well)
-	dsAuthHeader = JSON.stringify({
-		"Username": email,
-		"Password": password, 
-		"IntegratorKey": integratorKey	// global
-	});
-	// DocuSign authorization header
-	options.headers["X-DocuSign-Authentication"] = dsAuthHeader;
-}
-
-///////////////////////////////////////////////////////////////////////////////////////////////
-function parseResponseBody(err, res, body) {
-	console.log("\r\nAPI Call Result: \r\n", JSON.parse(body));
-	if( res.statusCode != 200 && res.statusCode != 201)	{ // success statuses
-		console.log("Error calling webservice, status is: ", res.statusCode);
-		console.log("\r\n", err);
-		return false;
 	}
-	return true;
-}
+
+]);
