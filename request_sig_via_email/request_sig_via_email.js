@@ -64,8 +64,6 @@ async.waterfall(
 				console.error(err.response ? err.response.error : err);
 				return;
 			}
-			console.log('Login Info');
-			console.log(JSON.stringify(loginInfo,null,2));
 			if (loginInfo) {
 				// list of user account(s)
 				// note that a given user may be a member of multiple accounts
