@@ -1,5 +1,5 @@
 // Request Signature on a Document (Node.js)
-
+// 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)
 //  2. Change "***" to appropriate values
@@ -10,7 +10,7 @@
 //  4. Ensure sure 'blank.pdf' exists in the same directory, or create a blank pdf yourself
 //  5. Execute
 //     node example.js 
-//
+
 
 var docusign = require('docusign-esign'),
 	async = require('async'),
@@ -25,9 +25,6 @@ var integratorKey = '***',	// Integrator Key associated with your DocuSign Integ
 	docusignEnv = 'demo',	// DocuSign Environment generally demo for testing purposes ('www' == production)
 	fileToSign = 'blank.pdf',
 	baseUrl = 'https://' + docusignEnv + '.docusign.net/restapi';
-
-
-// relative path to PDF (can also be many other filetypes) 
 
 async.waterfall(
   [
