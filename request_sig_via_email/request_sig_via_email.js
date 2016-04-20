@@ -7,7 +7,7 @@
 //     npm install docusign-esign
 //     npm install async
 //     npm install fs
-//  4. Ensure sure 'blank.pdf' exists in the same directory, or create a blank pdf yourself
+//  4. Ensure sure 'blank.pdf' (from '_sample_documents') exists in the same directory, or create a blank pdf yourself
 //  5. Execute
 //     node example.js 
 
