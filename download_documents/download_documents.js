@@ -15,9 +15,9 @@ var docusign = require('docusign-esign'),
 	async = require('async'),
 	fs = require('fs');
 
-var integratorKey = '***',	// Integrator Key associated with your DocuSign Integration
-	email = '***',			// Email for your DocuSign Account
-	password = '***',		// Password for your DocuSign Account
+var integratorKey = process.env.DOCUSIGN_INTEGRATOR_KEY || '***',	// Integrator Key associated with your DocuSign Integration
+	email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',				// Email for your DocuSign Account
+	password = process.env.DOCUSIGN_LOGIN_PASSWORD || '***',		// Password for your DocuSign Account
 	envelopeId = '***',		// Individual Envelope ID
 	docusignEnv = 'demo',	// DocuSign Environment generally demo for testing purposes ('www' == production)
 	baseUrl = 'https://' + docusignEnv + '.docusign.net/restapi';
@@ -99,7 +99,6 @@ async.waterfall(
 
 ]);
 
-
 function downloadEnvelopeDoc(doc, loginAccounts) {
 	
 	// use the |accountId| we retrieved through the Login API
@@ -117,7 +116,7 @@ function downloadEnvelopeDoc(doc, loginAccounts) {
 			return;
 		}
 		if (document){
-			var buffer = new Buffer(document);
+			var buffer = new Buffer(document,'binary'); // it arrives as an application/pdf in binary form
 			var name = doc.name.split('.');
 			if(name[name.length - 1].toLowerCase() != 'pdf'){
 				name.push('pdf');
