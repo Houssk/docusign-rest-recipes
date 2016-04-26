@@ -18,7 +18,7 @@ var docusign = require('docusign-esign'),
 	path = require('path');
 
 var integratorKey = process.env.DOCUSIGN_INTEGRATOR_KEY || '***',	// Integrator Key associated with your DocuSign Integration
-	email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',			// Email for your DocuSign Account
+	email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',				// Email for your DocuSign Account
 	password = process.env.DOCUSIGN_LOGIN_PASSWORD || '***',		// Password for your DocuSign Account
 	signerName = '***',	// Recipient's Full Name
 	signerEmail = '***', // Recipient's Email
