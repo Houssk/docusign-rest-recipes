@@ -13,9 +13,9 @@
 var docusign = require('docusign-esign'),
 	async = require('async');
 
-var integratorKey = '***',	// Integrator Key associated with your DocuSign Integration
-	email = '***',			// Email for your DocuSign Account
-	password = '***',		// Password for your DocuSign Account
+var integratorKey = process.env.DOCUSIGN_INTEGRATOR_KEY || '***',	// Integrator Key associated with your DocuSign Integration
+	email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',				// Email for your DocuSign Account
+	password = process.env.DOCUSIGN_LOGIN_PASSWORD || '***',		// Password for your DocuSign Account
 	recipientName = '***',	// Recipient's Full Name
 	recipientEmail = '***', // Recipient's Email
 	templateId = "***",		// valid templateId from a template in your account
