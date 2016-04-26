@@ -6,7 +6,7 @@
 //  1. Copy the file to your local machine and give it a .php extension (app.php)
 //  2. Change "***" to appropriate values
 //  3. Install Composer (PHP package manager: https://getcomposer.org/doc/00-intro.md#installation-linux-unix-osx)
-//	4. DocuSign's PHP SDK using composer:
+//  4. DocuSign's PHP SDK using composer:
 //     composer require docusign/esign-client
 //  5. Ensure sure 'blank.pdf' (from '_sample_documents') exists in the same directory, or create a blank pdf yourself
 //  6. Execute
