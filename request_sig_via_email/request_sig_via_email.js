@@ -1,4 +1,4 @@
-// Request Signature on a Document (Node.js)
+// Request Signature on a Document [creating Envelope using a local file] (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)

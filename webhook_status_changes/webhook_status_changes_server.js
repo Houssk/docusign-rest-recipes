@@ -1,4 +1,4 @@
-// Server for responding to [and include Notification Request] (Node.js)
+// Server for responding to webhook [Envelope included Notification Request] (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. server.js)

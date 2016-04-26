@@ -1,4 +1,4 @@
-// Request Signature on multiple Documents (Node.js)
+// Using AutoPlace (AnchorText) tabs on an Envelope (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)

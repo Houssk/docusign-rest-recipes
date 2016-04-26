@@ -1,4 +1,4 @@
-// Request Signature on a Document [and include Notification Request] (Node.js)
+// Request Signature on a Document [and include Notification Request to get webhook to your server] (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)

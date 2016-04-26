@@ -1,4 +1,4 @@
-// Request Envelope Statuses (Node.js)
+// Request Envelope Statuses (polling instead of webhook) (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)
