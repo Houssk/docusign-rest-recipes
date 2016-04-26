@@ -12,9 +12,9 @@
 
 
 var express = require('express'),
-	fs = require('fs'),
-	path = require('path'),
-    xmlparser = require('express-xml-bodyparser');
+  fs = require('fs'),
+  path = require('path'),
+  xmlparser = require('express-xml-bodyparser');
 
 var app = express();
 
@@ -22,23 +22,23 @@ app.set('port', (process.env.PORT || 5000));
 
 app.post('/', xmlparser({trim: false, explicitArray: false}), function(req, res, next) {
 
-	console.log(JSON.stringify(req.body,null,2)); // converted using xml2js
+  console.log(JSON.stringify(req.body,null,2)); // converted using xml2js
 
-	var envelopeId = req.body.docusignenvelopeinformation.envelopestatus.envelopeid;
-	var filename = [envelopeId,'xml'].join('.');
+  var envelopeId = req.body.docusignenvelopeinformation.envelopestatus.envelopeid;
+  var filename = [envelopeId,'xml'].join('.');
 
-	// Save raw XML to file
-	var writePath = [__dirname,filename].join('/');
-	fs.writeFile(writePath, req.rawBody, function (err,data) {
-		if (err) {
-			return console.error(err);
-		}
-		console.log('Envelope XML data written to:', writePath);
-	});
-		
-	// Logs for your EventNotification webhooks are visible from Admin -> Connect (left menu, under Integrations) -> Logs (button in the top-right)
-	// https://admindemo.docusign.com/connect-logs
- 	res.send('DocuSign webhook endpoint reached!'); 
+  // Save raw XML to file
+  var writePath = [__dirname,filename].join('/');
+  fs.writeFile(writePath, req.rawBody, function (err,data) {
+    if (err) {
+      return console.error(err);
+    }
+    console.log('Envelope XML data written to:', writePath);
+  });
+    
+  // Logs for your EventNotification webhooks are visible from Admin -> Connect (left menu, under Integrations) -> Logs (button in the top-right)
+  // https://admindemo.docusign.com/connect-logs
+  res.send('DocuSign webhook endpoint reached!'); 
 });
 
 app.listen(app.get('port'), function() {

@@ -13,181 +13,180 @@
 
 
 var docusign = require('docusign-esign'),
-	async = require('async'),
-	fs = require('fs'),
-	path = require('path');
+  async = require('async'),
+  fs = require('fs'),
+  path = require('path');
 
-var integratorKey = process.env.DOCUSIGN_INTEGRATOR_KEY || '***',	// Integrator Key associated with your DocuSign Integration
-	email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',				// Email for your DocuSign Account
-	password = process.env.DOCUSIGN_LOGIN_PASSWORD || '***',		// Password for your DocuSign Account
-	recipientName = '***',	// Recipient's Full Name
-	recipientEmail = '***', // Recipient's Email
-	webhookUrl = 'https://****.ngrok.io/', // ngrok is great for testing
-	docusignEnv = 'demo',	// DocuSign Environment generally demo for testing purposes ('www' == production)
-	fileToSign = 'blank.pdf',
-	baseUrl = 'https://' + docusignEnv + '.docusign.net/restapi';
+var integratorKey = process.env.DOCUSIGN_INTEGRATOR_KEY || '***', // Integrator Key associated with your DocuSign Integration
+  email = process.env.DOCUSIGN_LOGIN_EMAIL || '***',        // Email for your DocuSign Account
+  password = process.env.DOCUSIGN_LOGIN_PASSWORD || '***',    // Password for your DocuSign Account
+  recipientName = '***',  // Recipient's Full Name
+  recipientEmail = '***', // Recipient's Email
+  webhookUrl = 'https://****.ngrok.io/', // ngrok is great for testing
+  docusignEnv = 'demo', // DocuSign Environment generally demo for testing purposes ('www' == production)
+  fileToSign = 'blank.pdf',
+  baseUrl = 'https://' + docusignEnv + '.docusign.net/restapi';
 
 async.waterfall(
-  [
-	/////////////////////////////////////////////////////////////////////////////////////
-	// Step 1: Login (used to retrieve your accountId and account baseUrl)
-	/////////////////////////////////////////////////////////////////////////////////////
+[
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 1: Login (used to retrieve your accountId and account baseUrl)
+  /////////////////////////////////////////////////////////////////////////////////////
 
-	function login(next) {
+  function login(next) {
 
-		// initialize the api client
-		var apiClient = new docusign.ApiClient();
-		apiClient.setBasePath(baseUrl);
+    // initialize the api client
+    var apiClient = new docusign.ApiClient();
+    apiClient.setBasePath(baseUrl);
 
-		// create JSON formatted auth header
-		var creds = JSON.stringify({
-		  Username: email,
-		  Password: password,
-		  IntegratorKey: integratorKey
-		});
-		apiClient.addDefaultHeader('X-DocuSign-Authentication', creds);
+    // create JSON formatted auth header
+    var creds = JSON.stringify({
+      Username: email,
+      Password: password,
+      IntegratorKey: integratorKey
+    });
+    apiClient.addDefaultHeader('X-DocuSign-Authentication', creds);
 
-		// assign api client to the Configuration object
-		docusign.Configuration.default.setDefaultApiClient(apiClient);
+    // assign api client to the Configuration object
+    docusign.Configuration.default.setDefaultApiClient(apiClient);
 
-		// login call available off the AuthenticationApi
-		var authApi = new docusign.AuthenticationApi();
+    // login call available off the AuthenticationApi
+    var authApi = new docusign.AuthenticationApi();
 
-		// login has some optional parameters we can set
-		var loginOps = new authApi.LoginOptions();
-		loginOps.setApiPassword('true');
-		loginOps.setIncludeAccountIdGuid('true');
-		authApi.login(loginOps, function (err, loginInfo, response) {
-			if (err) {
-				console.error(err.response ? err.response.error : err);
-				return;
-			}
-			if (loginInfo) {
-				// list of user account(s)
-				// note that a given user may be a member of multiple accounts
-				var loginAccounts = loginInfo.getLoginAccounts();
-				console.log('LoginInformation: ' + JSON.stringify(loginAccounts));
-				next(null, loginAccounts);
-			}
-		});
-	},
-	
-	/////////////////////////////////////////////////////////////////////////////////////
-	// Step 2: Request Signature on a PDF Document (and include EventNotification) 
-	/////////////////////////////////////////////////////////////////////////////////////
+    // login has some optional parameters we can set
+    var loginOps = new authApi.LoginOptions();
+    loginOps.setApiPassword('true');
+    loginOps.setIncludeAccountIdGuid('true');
+    authApi.login(loginOps, function (err, loginInfo, response) {
+      if (err) {
+        console.error(err.response ? err.response.error : err);
+        return;
+      }
+      if (loginInfo) {
+        // list of user account(s)
+        // note that a given user may be a member of multiple accounts
+        var loginAccounts = loginInfo.getLoginAccounts();
+        console.log('LoginInformation: ' + JSON.stringify(loginAccounts));
+        next(null, loginAccounts);
+      }
+    });
+  },
+  
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 2: Request Signature on a PDF Document (and include EventNotification) 
+  /////////////////////////////////////////////////////////////////////////////////////
 
-	function requestSignature(loginAccounts, next){
-		console.log('requestSignature');
-		// create a byte array that will hold our document bytes
-		var fileBytes = null;
-		try {
-			// read file from a local directory
-			fileBytes = fs.readFileSync(path.resolve([__filename, '..', fileToSign].join('/')));
-		} catch (ex) {
-			// handle error
-			console.log('Exception: ' + ex);
-			return;
-		}
+  function requestSignature(loginAccounts, next){
+    console.log('requestSignature');
+    // create a byte array that will hold our document bytes
+    var fileBytes = null;
+    try {
+      // read file from a local directory
+      fileBytes = fs.readFileSync(path.resolve([__filename, '..', fileToSign].join('/')));
+    } catch (ex) {
+      // handle error
+      console.log('Exception: ' + ex);
+      return;
+    }
 
-		// create an envelope that will store the document(s), field(s), and recipient(s)
-		var envDef = new docusign.EnvelopeDefinition();
-		envDef.setEmailSubject('Please sign this document sent from the DocuSign Node SDK)');
+    // create an envelope that will store the document(s), field(s), and recipient(s)
+    var envDef = new docusign.EnvelopeDefinition();
+    envDef.setEmailSubject('Please sign this document sent from the DocuSign Node SDK)');
 
-		// add a document to the envelope
-		var doc = new docusign.Document();
-		var base64Doc = new Buffer(fileBytes).toString('base64');
-		doc.setDocumentBase64(base64Doc);
-		doc.setName('DocuSign API - Signature Request on Document Call'); // can be different from actual file name
-		doc.setDocumentId('1'); // hardcode so we can easily refer to this document later
+    // add a document to the envelope
+    var doc = new docusign.Document();
+    var base64Doc = new Buffer(fileBytes).toString('base64');
+    doc.setDocumentBase64(base64Doc);
+    doc.setName('DocuSign API - Signature Request on Document Call'); // can be different from actual file name
+    doc.setDocumentId('1'); // hardcode so we can easily refer to this document later
 
-		var docs = [];
-		docs.push(doc);
-		envDef.setDocuments(docs);
+    var docs = [];
+    docs.push(doc);
+    envDef.setDocuments(docs);
 
-		// add a recipient to sign the document, identified by name and email we used above
-		var signer = new docusign.Signer();
-		signer.setEmail(recipientEmail);
-		signer.setName(recipientName);
-		signer.setRecipientId('1');
+    // add a recipient to sign the document, identified by name and email we used above
+    var signer = new docusign.Signer();
+    signer.setEmail(recipientEmail);
+    signer.setName(recipientName);
+    signer.setRecipientId('1');
 
-		// create a signHere tab somewhere on the document for the signer to sign
-		// default unit of measurement is pixels, can be mms, cms, inches also
-		var signHere = new docusign.SignHere();
-		signHere.setDocumentId('1');
-		signHere.setPageNumber('1');
-		signHere.setRecipientId('1');
-		signHere.setXPosition('100');
-		signHere.setYPosition('100');
+    // create a signHere tab somewhere on the document for the signer to sign
+    // default unit of measurement is pixels, can be mms, cms, inches also
+    var signHere = new docusign.SignHere();
+    signHere.setDocumentId('1');
+    signHere.setPageNumber('1');
+    signHere.setRecipientId('1');
+    signHere.setXPosition('100');
+    signHere.setYPosition('100');
 
-		// can have multiple tabs, so need to add to envelope as a single element list
-		var signHereTabs = [];
-		signHereTabs.push(signHere);
-		var tabs = new docusign.Tabs();
-		tabs.setSignHereTabs(signHereTabs);
-		signer.setTabs(tabs);
+    // can have multiple tabs, so need to add to envelope as a single element list
+    var signHereTabs = [];
+    signHereTabs.push(signHere);
+    var tabs = new docusign.Tabs();
+    tabs.setSignHereTabs(signHereTabs);
+    signer.setTabs(tabs);
 
-		// add recipients (in this case a single signer) to the envelope
-		envDef.setRecipients(new docusign.Recipients());
-		envDef.getRecipients().setSigners([]);
-		envDef.getRecipients().getSigners().push(signer);
+    // add recipients (in this case a single signer) to the envelope
+    envDef.setRecipients(new docusign.Recipients());
+    envDef.getRecipients().setSigners([]);
+    envDef.getRecipients().getSigners().push(signer);
 
-		// Setup EventNotification settings
-		var EventNotification = new docusign.EventNotification();
-		EventNotification.setUrl(webhookUrl);
-		EventNotification.setLoggingEnabled('true');
-		EventNotification.setRequireAcknowledgment('true');
-		EventNotification.setUseSoapInterface('false');
-		EventNotification.setIncludeCertificateWithSoap('false');
-		EventNotification.setSignMessageWithX509Cert('false');
-		EventNotification.setIncludeDocuments('true');
-		EventNotification.setIncludeEnvelopeVoidReason('true');
-		EventNotification.setIncludeTimeZone('true');
-		EventNotification.setIncludeSenderAccountAsCustomField('true');
-		EventNotification.setIncludeDocumentFields('true');
-		EventNotification.setIncludeCertificateOfCompletion('true');
+    // Setup EventNotification settings
+    var EventNotification = new docusign.EventNotification();
+    EventNotification.setUrl(webhookUrl);
+    EventNotification.setLoggingEnabled('true');
+    EventNotification.setRequireAcknowledgment('true');
+    EventNotification.setUseSoapInterface('false');
+    EventNotification.setIncludeCertificateWithSoap('false');
+    EventNotification.setSignMessageWithX509Cert('false');
+    EventNotification.setIncludeDocuments('true');
+    EventNotification.setIncludeEnvelopeVoidReason('true');
+    EventNotification.setIncludeTimeZone('true');
+    EventNotification.setIncludeSenderAccountAsCustomField('true');
+    EventNotification.setIncludeDocumentFields('true');
+    EventNotification.setIncludeCertificateOfCompletion('true');
 
-		// Add states to get notified on (Envelope and Recipient-level)
-		var envelopeEvents = [];
-		['sent','delivered','completed','declined','voided'].forEach(function(ev){
-			var statusCode = new docusign.EnvelopeEvent()
-			statusCode.setEnvelopeEventStatusCode(ev);
-			envelopeEvents.push(statusCode);
-		});
+    // Add states to get notified on (Envelope and Recipient-level)
+    var envelopeEvents = [];
+    ['sent','delivered','completed','declined','voided'].forEach(function(ev){
+      var statusCode = new docusign.EnvelopeEvent()
+      statusCode.setEnvelopeEventStatusCode(ev);
+      envelopeEvents.push(statusCode);
+    });
 
-		var recipientEvents = [];
-		['Sent','Delivered','Completed','Declined','AuthenticationFailed','AutoResponded'].forEach(function(ev){
-			var statusCode = new docusign.RecipientEvent()
-			statusCode.setRecipientEventStatusCode(ev);
-			recipientEvents.push(statusCode);
-		});
+    var recipientEvents = [];
+    ['Sent','Delivered','Completed','Declined','AuthenticationFailed','AutoResponded'].forEach(function(ev){
+      var statusCode = new docusign.RecipientEvent()
+      statusCode.setRecipientEventStatusCode(ev);
+      recipientEvents.push(statusCode);
+    });
 
-		EventNotification.setEnvelopeEvents(envelopeEvents);
-		EventNotification.setRecipientEvents(recipientEvents);
-		envDef.setEventNotification(EventNotification);
-	
-		// send the envelope by setting |status| to "sent". To save as a draft set to "created"
-		// - note that the envelope will only be 'sent' when it reaches the DocuSign server with the 'sent' status (not in the following call)
-		envDef.setStatus('sent');
+    EventNotification.setEnvelopeEvents(envelopeEvents);
+    EventNotification.setRecipientEvents(recipientEvents);
+    envDef.setEventNotification(EventNotification);
+  
+    // send the envelope by setting |status| to "sent". To save as a draft set to "created"
+    // - note that the envelope will only be 'sent' when it reaches the DocuSign server with the 'sent' status (not in the following call)
+    envDef.setStatus('sent');
 
-		// use the |accountId| we retrieved through the Login API to create the Envelope
-		var loginAccount = new docusign.LoginAccount();
-		loginAccount = loginAccounts[0];
-		var accountId = loginAccount.accountId;
+    // use the |accountId| we retrieved through the Login API to create the Envelope
+    var loginAccount = new docusign.LoginAccount();
+    loginAccount = loginAccounts[0];
+    var accountId = loginAccount.accountId;
 
-		// instantiate a new EnvelopesApi object
-		var envelopesApi = new docusign.EnvelopesApi();
+    // instantiate a new EnvelopesApi object
+    var envelopesApi = new docusign.EnvelopesApi();
 
-		// call the createEnvelope() API
-		envelopesApi.createEnvelope(accountId, envDef, null, function (error, envelopeSummary, response) {
-			if (error) {
-				console.error('Error: ' + error);
-				return;
-			}
+    // call the createEnvelope() API
+    envelopesApi.createEnvelope(accountId, envDef, null, function (error, envelopeSummary, response) {
+      if (error) {
+        console.error('Error: ' + error);
+        return;
+      }
 
-			if (envelopeSummary) {
-				console.log('EnvelopeSummary: ' + JSON.stringify(envelopeSummary,null,2));
-			}
-		});
-	}
-
+      if (envelopeSummary) {
+        console.log('EnvelopeSummary: ' + JSON.stringify(envelopeSummary,null,2));
+      }
+    });
+  }
 ]);
