@@ -1,73 +1,154 @@
 <?php
 
-	// Input your info here:
-	$email = "***";			// your account email (also where this signature request will be sent)
-	$password = "***";		// your account password
-	$integratorKey = "***";		// your account integrator key, found on (Preferences -> API page)
-	$recipientName = "***";		// provide a recipient (signer) name
-	$templateId = "***";		// provide a valid templateId of a template in your account
-	$templateRoleName = "***";	// use same role name that exists on the template in the console
-	
-	// construct the authentication header:
-	$header = "<DocuSignCredentials><Username>" . $email . "</Username><Password>" . $password . "</Password><IntegratorKey>" . $integratorKey . "</IntegratorKey></DocuSignCredentials>";
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	// STEP 1 - Login (to retrieve baseUrl and accountId)
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	$url = "https://demo.docusign.net/restapi/v2/login_information";
-	$curl = curl_init($url);
-	curl_setopt($curl, CURLOPT_HEADER, false);
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($curl, CURLOPT_HTTPHEADER, array("X-DocuSign-Authentication: $header"));
-	
-	$json_response = curl_exec($curl);
-	$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-	
-	if ( $status != 200 ) {
-		echo "error calling webservice, status is:" . $status;
-		exit(-1);
-	}
-	
-	$response = json_decode($json_response, true);
-	$accountId = $response["loginAccounts"][0]["accountId"];
-	$baseUrl = $response["loginAccounts"][0]["baseUrl"];
-	curl_close($curl);
-	
-	// --- display results
-	echo "\naccountId = " . $accountId . "\nbaseUrl = " . $baseUrl . "\n";
-	
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	// STEP 2 - Create and envelope using one template role (called "Signer1") and one recipient
-	/////////////////////////////////////////////////////////////////////////////////////////////////
-	$data = array("accountId" => $accountId, 
-		"emailSubject" => "DocuSign API - Signature Request from Template",
-		"templateId" => $templateId, 
-		"templateRoles" => array( 
-				array( "email" => $email, "name" => $recipientName, "roleName" => $templateRoleName )),
-		"status" => "sent");                                                                    
-	
-	$data_string = json_encode($data);  
-	$curl = curl_init($baseUrl . "/envelopes" );
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($curl, CURLOPT_POST, true);
-	curl_setopt($curl, CURLOPT_POSTFIELDS, $data_string);                                                                  
-	curl_setopt($curl, CURLOPT_HTTPHEADER, array(                                                                          
-		'Content-Type: application/json',                                                                                
-		'Content-Length: ' . strlen($data_string),
-		"X-DocuSign-Authentication: $header" )                                                                       
-	);
-	
-	$json_response = curl_exec($curl);
-	$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-	if ( $status != 201 ) {
-		echo "error calling webservice, status is:" . $status . "\nerror text is --> ";
-		print_r($json_response); echo "\n";
-		exit(-1);
-	}
-	
-	$response = json_decode($json_response, true);
-	$envelopeId = $response["envelopeId"];
-	
-	// --- display results
-	echo "Document is sent! Envelope ID = " . $envelopeId . "\n\n"; 
+// Request Signature on a Document (PHP)
+
+// To run this sample
+//  1. Copy the file to your local machine and give it a .php extension (app.php)
+//  2. Change "***" to appropriate values
+//  3. Install Composer (PHP package manager: https://getcomposer.org/doc/00-intro.md#installation-linux-unix-osx)
+//  4. Install DocuSign's PHP SDK using composer:
+//     composer require docusign/esign-client
+//  6. Execute
+//     php app.php
+//
+
+require_once('vendor/docusign/esign-client/autoload.php');
+
+$username = $_ENV["DOCUSIGN_LOGIN_EMAIL"] or "***";       // Account email address
+$password = $_ENV["DOCUSIGN_LOGIN_PASSWORD"] or "***";      // Account password
+$integrator_key = $_ENV["DOCUSIGN_INTEGRATOR_KEY"] or "***";  // Integrator Key (found on the Preferences -> API page)
+
+$recipientName = '';
+$recipientEmail = '';
+
+$templateId = '';
+$templateRoleName = 'signer1'; // the role name on your template
+
+$apiEnvironment = 'demo';
+
+class DocuSignSample
+{
+
+  public $apiClient;
+  public $accountId;
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 1: Login (used to retrieve your accountId and setup base Url in apiClient)
+  /////////////////////////////////////////////////////////////////////////////////////
+  public function login($username, $password, $integrator_key, $apiEnvironment)
+  {
+
+    // change to production before going live
+    $host = "https://{$apiEnvironment}.docusign.net/restapi";
+
+    // create configuration object and configure custom auth header
+    $config = new DocuSign\eSign\Configuration();
+    $config->setHost($host);
+    $config->addDefaultHeader("X-DocuSign-Authentication", "{\"Username\":\"" . $username . "\",\"Password\":\"" . $password . "\",\"IntegratorKey\":\"" . $integrator_key . "\"}");
+
+    // instantiate a new docusign api client
+    $this->apiClient = new DocuSign\eSign\ApiClient($config);
+    $accountId = null;
+
+    try 
+    {
+
+      $authenticationApi = new DocuSign\eSign\Api\AuthenticationApi($this->apiClient);
+      $options = new \DocuSign\eSign\Api\AuthenticationApi\LoginOptions();
+      $loginInformation = $authenticationApi->login($options);
+      if(isset($loginInformation) && count($loginInformation) > 0)
+      {
+        $this->loginAccount = $loginInformation->getLoginAccounts()[0];
+        if(isset($loginInformation))
+        {
+          $accountId = $this->loginAccount->getAccountId();
+          if(!empty($accountId))
+          {
+            $this->accountId = $accountId;
+            var_dump('accountId',$accountId);
+          }
+        }
+      }
+    }
+    catch (DocuSign\eSign\ApiException $ex)
+    {
+      echo "Exception: " . $ex->getMessage() . "\n";
+    }
+
+    return $this->apiClient;
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 2: Create Envelope from Template (no document required locally) and Request Signature 
+  /////////////////////////////////////////////////////////////////////////////////////
+  public function signatureRequestFromTemplate(
+    $apiClient, 
+    $accountId, 
+    $recipient, 
+    $templateId,
+    $templateRole,
+    $status = "sent")
+  {
+
+    $envelope_summary = null;
+
+    $envelope_definition = new DocuSign\eSign\Model\EnvelopeDefinition();
+    $envelope_definition->setEmailSubject("[DocuSign PHP SDK] - Please sign this doc sent via Template");
+    $envelope_definition->setTemplateId($templateId);
+
+    $tRole = new DocuSign\eSign\Model\TemplateRole();
+    $tRole->setName($recipient->name);
+    $tRole->setEmail($recipient->email);
+    $tRole->setRoleName($templateRole);
+
+    $templateRolesList = array();
+    array_push($templateRolesList, $tRole);
+
+      // assign template role(s) to the envelope
+      $envelope_definition->setTemplateRoles($templateRolesList);
+
+    // set envelope status to "sent" to immediately send the signature request
+    $envelope_definition->setStatus($status);
+
+    $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
+    $envelope_summary = $envelopeApi->createEnvelope($accountId, $envelope_definition);
+    if(!empty($envelope_summary))
+    {
+      if($status == "created")
+      {
+        var_dump('Created Envelope');
+      }
+      else
+      {
+        var_dump('Created and SENT Envelope:', $envelope_summary);
+      }
+    }
+
+    return;
+  }
+
+}
+
+class DocuSignRecipient
+{
+  public $name;
+  public $email;
+
+  function __construct($name, $email)
+  {
+    $this->name = $name;
+    $this->email = $email;
+  }
+}
+
+$sample = new DocuSignSample();
+$recipient = new DocuSignRecipient($recipientName, $recipientEmail);
+
+// Login
+$sample->login($username, $password, $integrator_key, $apiEnvironment);
+
+// Create Envelope from Template and send
+$sample->signatureRequestFromTemplate($sample->apiClient, $sample->accountId, $recipient, $templateId, $templateRoleName);
+
 ?>

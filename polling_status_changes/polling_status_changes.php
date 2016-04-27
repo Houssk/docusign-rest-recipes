@@ -1,65 +1,117 @@
 <?php
 
-// Input your info here:
-$email = "***";			// your account email
-$password = "***";		// your account password
-$integratorKey = "***";		// your account integrator key, found on (Preferences -> API page)
+// Request Envelope Statuses (polling instead of webhook) (PHP)
+// 
+// To run this sample
+//  1. Copy the file to your local machine and give it a .php extension (app.php)
+//  2. Change "***" to appropriate values
+//  3. Install Composer (PHP package manager: https://getcomposer.org/doc/00-intro.md#installation-linux-unix-osx)
+//  4. Install DocuSign's PHP SDK using composer:
+//     composer require docusign/esign-client
+//  5. Execute
+//     php app.php
+//
 
-// construct the authentication header:
-$header = "<DocuSignCredentials><Username>" . $email . "</Username><Password>" . $password . "</Password><IntegratorKey>" . $integratorKey . "</IntegratorKey></DocuSignCredentials>";
+require_once('vendor/docusign/esign-client/autoload.php');
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// STEP 1 - Login (retrieves baseUrl and accountId)
-/////////////////////////////////////////////////////////////////////////////////////////////////
-$url = "https://demo.docusign.net/restapi/v2/login_information";
-$curl = curl_init($url);
-curl_setopt($curl, CURLOPT_HEADER, false);
-curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($curl, CURLOPT_HTTPHEADER, array("X-DocuSign-Authentication: $header"));
+$username = $_ENV["DOCUSIGN_LOGIN_EMAIL"] or "***";       // Account email address
+$password = $_ENV["DOCUSIGN_LOGIN_PASSWORD"] or "***";      // Account password
+$integrator_key = $_ENV["DOCUSIGN_INTEGRATOR_KEY"] or "***";  // Integrator Key (found on the Preferences -> API page)
 
-$json_response = curl_exec($curl);
-$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+$apiEnvironment = 'demo';
 
-if ( $status != 200 ) {
-	echo "error calling webservice, status is:" . $status;
-	exit(-1);
+class DocuSignSample
+{
+
+  public $apiClient;
+  public $accountId;
+  public $envelopeId;
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 1: Login (used to retrieve your accountId and setup base Url in apiClient)
+  /////////////////////////////////////////////////////////////////////////////////////
+  public function login(
+    $username, 
+    $password, 
+    $integrator_key, 
+    $apiEnvironment)
+  {
+
+    // change to production before going live
+    $host = "https://{$apiEnvironment}.docusign.net/restapi";
+
+    // create configuration object and configure custom auth header
+    $config = new DocuSign\eSign\Configuration();
+    $config->setHost($host);
+    $config->addDefaultHeader("X-DocuSign-Authentication", "{\"Username\":\"" . $username . "\",\"Password\":\"" . $password . "\",\"IntegratorKey\":\"" . $integrator_key . "\"}");
+
+    // instantiate a new docusign api client
+    $this->apiClient = new DocuSign\eSign\ApiClient($config);
+    $accountId = null;
+
+    try 
+    {
+
+      $authenticationApi = new DocuSign\eSign\Api\AuthenticationApi($this->apiClient);
+      $options = new \DocuSign\eSign\Api\AuthenticationApi\LoginOptions();
+      $loginInformation = $authenticationApi->login($options);
+      if(isset($loginInformation) && count($loginInformation) > 0)
+      {
+        $this->loginAccount = $loginInformation->getLoginAccounts()[0];
+        if(isset($loginInformation))
+        {
+          $accountId = $this->loginAccount->getAccountId();
+          if(!empty($accountId))
+          {
+            $this->accountId = $accountId;
+          }
+        }
+      }
+    }
+    catch (DocuSign\eSign\ApiException $ex)
+    {
+      echo "Exception: " . $ex->getMessage() . "\n";
+    }
+
+    return $this->apiClient;
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 2: Get Multiple Envelope Statuses
+  /////////////////////////////////////////////////////////////////////////////////////
+  function listEnvelopeStatuses(
+    $apiClient,
+    $accountId) 
+  {
+
+    // instantiate a new EnvelopesApi object
+    $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
+
+
+    // the list status changes call requires at least a from_date
+    $options = new DocuSign\eSign\Api\EnvelopesApi\ListStatusChangesOptions();
+
+    // set from date to filter envelopes (ex: Jan 1, 2016)
+    $options->setFromDate( new DateTime('2016-01-01', new DateTimeZone('America/Los_Angeles')) );
+
+    // call listStatusChanges for statuses of Envelopes
+    $envelope_statuses = $envelopeApi->listStatusChanges($accountId, $options);
+    if(!empty($envelope_statuses)){
+      print_r($envelope_statuses->__toString());
+    }
+
+  }
+
 }
 
-$response = json_decode($json_response, true);
-$accountId = $response["loginAccounts"][0]["accountId"];
-$baseUrl = $response["loginAccounts"][0]["baseUrl"];
-curl_close($curl);    
+$sample = new DocuSignSample();
 
-//--- display results
-echo "\naccountId = " . $accountId . "\nbaseUrl = " . $baseUrl . "\n";
+// Login
+$sample->login($username, $password, $integrator_key, $apiEnvironment);
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// STEP 2 - status retrieval using filters
-/////////////////////////////////////////////////////////////////////////////////////////////////
-echo "Performing status retrieval using filters...\n";
-date_default_timezone_set('America/Los_Angeles');
-$from_date  = date("m") . "%2F" . (date("d")-7) . "%2F". date("Y");
+// Request statuses of recent Envelopes
+$sample->listEnvelopeStatuses($sample->apiClient, $sample->accountId);
 
-$curl = curl_init($baseUrl . "/envelopes?from_date=$from_date&status=created,sent,delivered,signed,completed" );
-curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($curl, CURLOPT_HTTPHEADER, array(                                                                          
-	'Accept: application/json',
-	"X-DocuSign-Authentication: $header" )                                                                       
-);
 
-$json_response = curl_exec($curl);
-$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-if ( $status != 200 ) {
-	echo "error calling webservice, status is:" . $status . "\nerror text is --> ";
-	print_r($json_response); echo "\n";
-	exit(-1);
-}
-
-$response = json_decode($json_response, true);
-
-//--- display results
-echo "Received " . count( $response["envelopes"]) . " envelopes\n";
-foreach ($response["envelopes"] as $envelope) {
-	echo "envelope: " . $envelope["envelopeId"] . " " . $envelope["status"] . " " . $envelope["statusChangedDateTime"] . "\n";
-}    
-
+?>

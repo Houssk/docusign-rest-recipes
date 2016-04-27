@@ -1,91 +1,136 @@
 <?php
 
-  // Input your info here:
-$email = "***";			// your account email
-$password = "***";		// your account password
-$integratorKey = "***";		// your account integrator key, found on (Preferences -> API page)
+// Download Envelope Documents (PHP)
+// 
+// To run this sample
+//  1. Copy the file to your local machine and give it a .php extension (app.php)
+//  2. Change "***" to appropriate values
+//  3. Install Composer (PHP package manager: https://getcomposer.org/doc/00-intro.md#installation-linux-unix-osx)
+//  4. Install DocuSign's PHP SDK using composer:
+//     composer require docusign/esign-client
+//  5. Execute
+//     php app.php
+//
 
-// copy the envelopeId from an existing envelope in your account that you want
-// to download documents from
-$envelopeId = "***";
+require_once('vendor/docusign/esign-client/autoload.php');
 
-// construct the authentication header:
-$header = "<DocuSignCredentials><Username>" . $email . "</Username><Password>" . $password . "</Password><IntegratorKey>" . $integratorKey . "</IntegratorKey></DocuSignCredentials>";
+$username = $_ENV["DOCUSIGN_LOGIN_EMAIL"] or "***";       // Account email address
+$password = $_ENV["DOCUSIGN_LOGIN_PASSWORD"] or "***";      // Account password
+$integrator_key = $_ENV["DOCUSIGN_INTEGRATOR_KEY"] or "***";  // Integrator Key (found on the Preferences -> API page)
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// STEP 1 - Login (retrieves baseUrl and accountId)
-/////////////////////////////////////////////////////////////////////////////////////////////////
-$url = "https://demo.docusign.net/restapi/v2/login_information";
-$curl = curl_init($url);
-curl_setopt($curl, CURLOPT_HEADER, false);
-curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($curl, CURLOPT_HTTPHEADER, array("X-DocuSign-Authentication: $header"));
+$envelopeId = '***';
 
-$json_response = curl_exec($curl);
-$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
+$apiEnvironment = 'demo';
 
-if ( $status != 200 ) {
-	echo "error calling webservice, status is:" . $status;
-	exit(-1);
+class DocuSignSample
+{
+
+  public $apiClient;
+  public $accountId;
+  public $envelopeId;
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 1: Login (used to retrieve your accountId and setup base Url in apiClient)
+  /////////////////////////////////////////////////////////////////////////////////////
+  public function login(
+    $username, 
+    $password, 
+    $integrator_key, 
+    $apiEnvironment)
+  {
+
+    // change to production before going live
+    $host = "https://{$apiEnvironment}.docusign.net/restapi";
+
+    // create configuration object and configure custom auth header
+    $config = new DocuSign\eSign\Configuration();
+    $config->setHost($host);
+    $config->addDefaultHeader("X-DocuSign-Authentication", "{\"Username\":\"" . $username . "\",\"Password\":\"" . $password . "\",\"IntegratorKey\":\"" . $integrator_key . "\"}");
+
+    // instantiate a new docusign api client
+    $this->apiClient = new DocuSign\eSign\ApiClient($config);
+    $accountId = null;
+
+    try 
+    {
+
+      $authenticationApi = new DocuSign\eSign\Api\AuthenticationApi($this->apiClient);
+      $options = new \DocuSign\eSign\Api\AuthenticationApi\LoginOptions();
+      $loginInformation = $authenticationApi->login($options);
+      if(isset($loginInformation) && count($loginInformation) > 0)
+      {
+        $this->loginAccount = $loginInformation->getLoginAccounts()[0];
+        if(isset($loginInformation))
+        {
+          $accountId = $this->loginAccount->getAccountId();
+          if(!empty($accountId))
+          {
+            $this->accountId = $accountId;
+          }
+        }
+      }
+    }
+    catch (DocuSign\eSign\ApiException $ex)
+    {
+      echo "Exception: " . $ex->getMessage() . "\n";
+    }
+
+    return $this->apiClient;
+
+  }
+
+  /////////////////////////////////////////////////////////////////////////////////////
+  // Step 2: Get Envelope Documents
+  /////////////////////////////////////////////////////////////////////////////////////
+  function listDocumentsForEnvelope(
+    $apiClient,
+    $accountId,
+    $envelopeId) 
+  {
+
+    // instantiate a new EnvelopesApi object
+    $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
+
+    // call the listDocuments API to get a list of documents
+    $documents = $envelopeApi->listDocuments($accountId, $envelopeId);
+    if(!empty($documents)){
+      var_dump($documents);
+      foreach($documents->getEnvelopeDocuments() as $document){
+        // initiate download of each document
+        $this->downloadEnvelopeDoc($apiClient, $accountId, $envelopeId, $document);
+      }
+    }
+
+  }
+
+  function downloadEnvelopeDoc(
+    $apiClient, 
+    $accountId, 
+    $envelopeId,
+    $document) {
+
+    // instantiate a new EnvelopesApi object
+    $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
+
+    // get the Document (arrives as SplFileObject in temp directory)
+    $savedDoc = $envelopeApi->getDocument($accountId, $envelopeId, $document->getDocumentId());
+
+    // move the document
+    $oldName = $savedDoc->getPathname();
+    $newName = 'dl/' . $envelopeId . "-" . $document->getName().'.pdf';
+    rename($oldName, $newName);
+
+  }
+
 }
 
-$response = json_decode($json_response, true);
-$accountId = $response["loginAccounts"][0]["accountId"];
-$baseUrl = $response["loginAccounts"][0]["baseUrl"];
-curl_close($curl);
+$sample = new DocuSignSample();
 
-//--- display results
-echo "accountId = " . $accountId . "\nbaseUrl = " . $baseUrl . "\n";
+// Login
+$sample->login($username, $password, $integrator_key, $apiEnvironment);
 
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// STEP 2 - Get document information
-/////////////////////////////////////////////////////////////////////////////////////////////////                                                                                  
-$curl = curl_init($baseUrl . "/envelopes/" . $envelopeId . "/documents" );
-curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-curl_setopt($curl, CURLOPT_HTTPHEADER, array(                                                                          
-	"X-DocuSign-Authentication: $header" )                                                                       
-);
+// Request documents for Envelope
+$sample->listDocumentsForEnvelope($sample->apiClient, $sample->accountId, $envelopeId);
 
-$json_response = curl_exec($curl);
-$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-if ( $status != 200 ) {
-	echo "error calling webservice, status is:" . $status;
-	exit(-1);
-}
 
-$response = json_decode($json_response, true);
-curl_close($curl);
-
-//--- display results
-echo "Envelope has following document(s) information...\n";
-print_r($response);	echo "\n";
-
-/////////////////////////////////////////////////////////////////////////////////////////////////
-// STEP 3 - Download the envelope's documents
-/////////////////////////////////////////////////////////////////////////////////////////////////
-foreach( $response["envelopeDocuments"] as $document ) {
-	$docUri = $document["uri"];
-	
-	$curl = curl_init($baseUrl . $docUri );
-	curl_setopt($curl, CURLOPT_RETURNTRANSFER, true);
-	curl_setopt($curl, CURLOPT_BINARYTRANSFER, true);  
-	curl_setopt($curl, CURLOPT_HTTPHEADER, array(                                                                          
-		"X-DocuSign-Authentication: $header" )                                                                       
-	);
-	
-	$data = curl_exec($curl);
-	$status = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-	if ( $status != 200 ) {
-		echo "error calling webservice, status is:" . $status;
-		exit(-1);
-	}
-
-	file_put_contents($envelopeId . "-" . $document["name"], $data);
-	curl_close($curl);
-	
-	//*** Documents should now be downloaded in the same folder as you ran this program
-}
-
-//--- display results
-echo "Envelope document(s) have been downloaded, check your local directory.\n";
-
+?>
