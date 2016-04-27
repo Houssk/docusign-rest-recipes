@@ -1,6 +1,6 @@
 <?php
 
-// Request Signature on a Document (PHP)
+// Request Signature on a Document via Template (PHP)
 
 // To run this sample
 //  1. Copy the file to your local machine and give it a .php extension (app.php)
@@ -18,10 +18,10 @@ $username = $_ENV["DOCUSIGN_LOGIN_EMAIL"] or "***";       // Account email addre
 $password = $_ENV["DOCUSIGN_LOGIN_PASSWORD"] or "***";      // Account password
 $integrator_key = $_ENV["DOCUSIGN_INTEGRATOR_KEY"] or "***";  // Integrator Key (found on the Preferences -> API page)
 
-$recipientName = '';
-$recipientEmail = '';
+$recipientName = '***';
+$recipientEmail = '***';
 
-$templateId = '';
+$templateId = '***';
 $templateRoleName = 'signer1'; // the role name on your template
 
 $apiEnvironment = 'demo';
