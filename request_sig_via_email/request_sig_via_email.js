@@ -7,7 +7,7 @@
 //     npm install docusign-esign
 //     npm install async
 //     npm install fs
-//  4. Ensure sure the 'fileToSign' variable references a file in the same directory
+//  4. Ensure the 'fileToSign' variable references a file in the same directory
 //  5. Execute
 //     node example.js 
 
