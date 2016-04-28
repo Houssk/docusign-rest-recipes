@@ -85,7 +85,7 @@ class DocuSignSample
   {
 
     $documentName = "PHPSignTest1";
-    $envelop_summary = null;
+    $envelope_summary = null;
   
     $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
 
@@ -114,26 +114,26 @@ class DocuSignSample
     // Add a recipient to sign the document
     $recipients = new DocuSign\eSign\Model\Recipients();
     $recipients->setSigners(array($signer));
-    $envelop_definition = new DocuSign\eSign\Model\EnvelopeDefinition();
-    $envelop_definition->setEmailSubject("[DocuSign PHP SDK] - Please sign this doc");
+    $envelope_definition = new DocuSign\eSign\Model\EnvelopeDefinition();
+    $envelope_definition->setEmailSubject("[DocuSign PHP SDK] - Please sign this doc");
 
     // set envelope status to "sent" to immediately send the signature request
-    $envelop_definition->setStatus($status);
-    $envelop_definition->setRecipients($recipients);
-    $envelop_definition->setDocuments(array($document));
+    $envelope_definition->setStatus($status);
+    $envelope_definition->setRecipients($recipients);
+    $envelope_definition->setDocuments(array($document));
     $options = new \DocuSign\eSign\Api\EnvelopesApi\CreateEnvelopeOptions();
     $options->setCdseMode(null);
     $options->setMergeRolesOnDraft(null);
-    $envelop_summary = $envelopeApi->createEnvelope($accountId, $envelop_definition, $options);
-    if(!empty($envelop_summary))
+    $envelope_summary = $envelopeApi->createEnvelope($accountId, $envelope_definition, $options);
+    if(!empty($envelope_summary))
     {
       if($status == "created")
       {
-        var_dump('created Envelope!!!');
+        var_dump('Created Envelope!');
       }
       else
       {
-        var_dump('created and SENT Envelope:', $envelop_summary);
+        var_dump('Created and SENT Envelope:', $envelope_summary);
       }
     }
 
@@ -161,9 +161,6 @@ $recipient = new DocuSignRecipient($recipientName, $recipientEmail);
 $sample->login($username, $password, $integrator_key, $apiEnvironment);
 
 // Create and Send Envelope
-$sample->signatureRequestOnDocument($sample->apiClient, $sample->accountId, $documentFileName, $recipient);
-
-// Get
 $sample->signatureRequestOnDocument($sample->apiClient, $sample->accountId, $documentFileName, $recipient);
 
 ?>
