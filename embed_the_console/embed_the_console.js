@@ -1,4 +1,4 @@
-// Request Console View (Node.js)
+// Request Embedded Console View (Node.js)
 // 
 // To run this sample
 //  1. Copy the file to your local machine and give .js extension (i.e. example.js)
@@ -67,7 +67,7 @@ async.waterfall(
   // ===============================================================================
   // Step 2:  Create ConsoleView 
   // ===============================================================================
-    function createConsoleView(loginAccounts, next){
+  function createConsoleView(loginAccounts, next){
     var loginAccount = new docusign.LoginAccount();
     loginAccount = loginAccounts[0];
     var accountId = loginAccount.accountId;
