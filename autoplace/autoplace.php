@@ -1,6 +1,6 @@
 <?php
 
-// Request Signature on Multiple Documents (PHP)
+// Using AutoPlace (AnchorText) tabs on an Envelope (PHP)
 
 // To run this sample
 //  1. Copy the file to your local machine and give it a .php extension (app.php)
