@@ -14,101 +14,106 @@
 
 require_once('vendor/docusign/esign-client/autoload.php');
 
-$username = $_ENV["DOCUSIGN_LOGIN_EMAIL"] or "***";       // Account email address
-$password = $_ENV["DOCUSIGN_LOGIN_PASSWORD"] or "***";      // Account password
-$integrator_key = $_ENV["DOCUSIGN_INTEGRATOR_KEY"] or "***";  // Integrator Key (found on the Preferences -> API page)
+$username = "***";          // Account email address
+$password = "***";          // Account password
+$integrator_key = "***";    // Integrator Key (found on the Preferences -> API page)
 
 $apiEnvironment = 'demo';
 
 class DocuSignSample
 {
 
-  public $apiClient;
-  public $accountId;
-  public $envelopeId;
+    public $apiClient;
+    public $accountId;
+    public $envelopeId;
 
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Step 1: Login (used to retrieve your accountId and setup base Url in apiClient)
-  /////////////////////////////////////////////////////////////////////////////////////
-  public function login(
-    $username, 
-    $password, 
-    $integrator_key, 
-    $apiEnvironment)
-  {
-
-    // change to production before going live
-    $host = "https://{$apiEnvironment}.docusign.net/restapi";
-
-    // create configuration object and configure custom auth header
-    $config = new DocuSign\eSign\Configuration();
-    $config->setHost($host);
-    $config->addDefaultHeader("X-DocuSign-Authentication", "{\"Username\":\"" . $username . "\",\"Password\":\"" . $password . "\",\"IntegratorKey\":\"" . $integrator_key . "\"}");
-
-    // instantiate a new docusign api client
-    $this->apiClient = new DocuSign\eSign\ApiClient($config);
-    $accountId = null;
-
-    try 
+    /////////////////////////////////////////////////////////////////////////////////////
+    // Step 1: Login (used to retrieve your accountId and setup base Url in apiClient)
+    /////////////////////////////////////////////////////////////////////////////////////
+    public function login(
+        $username, 
+        $password, 
+        $integrator_key, 
+        $apiEnvironment)
     {
 
-      $authenticationApi = new DocuSign\eSign\Api\AuthenticationApi($this->apiClient);
-      $options = new \DocuSign\eSign\Api\AuthenticationApi\LoginOptions();
-      $loginInformation = $authenticationApi->login($options);
-      if(isset($loginInformation) && count($loginInformation) > 0)
-      {
-        $this->loginAccount = $loginInformation->getLoginAccounts()[0];
-        if(isset($loginInformation))
+        // change to production before going live
+        $host = "https://{$apiEnvironment}.docusign.net/restapi";
+
+        // create configuration object and configure custom auth header
+        $config = new DocuSign\eSign\Configuration();
+        $config->setHost($host);
+        $config->addDefaultHeader("X-DocuSign-Authentication", "{\"Username\":\"" . $username . "\",\"Password\":\"" . $password . "\",\"IntegratorKey\":\"" . $integrator_key . "\"}");
+
+        // instantiate a new docusign api client
+        $this->apiClient = new DocuSign\eSign\ApiClient($config);
+        $accountId = null;
+
+        try 
         {
-          $accountId = $this->loginAccount->getAccountId();
-          if(!empty($accountId))
-          {
-            $this->accountId = $accountId;
-          }
+
+            $authenticationApi = new DocuSign\eSign\Api\AuthenticationApi($this->apiClient);
+            $options = new \DocuSign\eSign\Api\AuthenticationApi\LoginOptions();
+            $loginInformation = $authenticationApi->login($options);
+            if(isset($loginInformation) && count($loginInformation) > 0)
+            {
+                $this->loginAccount = $loginInformation->getLoginAccounts()[0];
+                if(isset($loginInformation))
+                {
+                    $accountId = $this->loginAccount->getAccountId();
+                    if(!empty($accountId))
+                    {
+                        $this->accountId = $accountId;
+                    }
+                }
+            }
         }
-      }
+        catch (DocuSign\eSign\ApiException $ex)
+        {
+            echo "Exception: " . $ex->getMessage() . "\n";
+            echo "API Response: " . $ex->getResponseBody() . "\n";
+            return false;
+        }
+
+        return $this->apiClient;
+
     }
-    catch (DocuSign\eSign\ApiException $ex)
+
+    /////////////////////////////////////////////////////////////////////////////////////
+    // Step 2: Get Multiple Envelope Statuses
+    /////////////////////////////////////////////////////////////////////////////////////
+    function listEnvelopeStatuses(
+        $apiClient,
+        $accountId) 
     {
-      echo "Exception: " . $ex->getMessage() . "\n";
+
+        // instantiate a new EnvelopesApi object
+        $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
+
+
+        // the list status changes call requires at least a from_date
+        $options = new DocuSign\eSign\Api\EnvelopesApi\ListStatusChangesOptions();
+
+        // set from date to filter envelopes (ex: Jan 1, 2016)
+        $options->setFromDate( new DateTime('2016-01-01', new DateTimeZone('America/Los_Angeles')) );
+
+        // call listStatusChanges for statuses of Envelopes
+        $envelope_statuses = $envelopeApi->listStatusChanges($accountId, $options);
+        if(!empty($envelope_statuses)){
+            print_r($envelope_statuses->__toString());
+        }
+
     }
-
-    return $this->apiClient;
-
-  }
-
-  /////////////////////////////////////////////////////////////////////////////////////
-  // Step 2: Get Multiple Envelope Statuses
-  /////////////////////////////////////////////////////////////////////////////////////
-  function listEnvelopeStatuses(
-    $apiClient,
-    $accountId) 
-  {
-
-    // instantiate a new EnvelopesApi object
-    $envelopeApi = new DocuSign\eSign\Api\EnvelopesApi($apiClient);
-
-
-    // the list status changes call requires at least a from_date
-    $options = new DocuSign\eSign\Api\EnvelopesApi\ListStatusChangesOptions();
-
-    // set from date to filter envelopes (ex: Jan 1, 2016)
-    $options->setFromDate( new DateTime('2016-01-01', new DateTimeZone('America/Los_Angeles')) );
-
-    // call listStatusChanges for statuses of Envelopes
-    $envelope_statuses = $envelopeApi->listStatusChanges($accountId, $options);
-    if(!empty($envelope_statuses)){
-      print_r($envelope_statuses->__toString());
-    }
-
-  }
 
 }
 
 $sample = new DocuSignSample();
 
 // Login
-$sample->login($username, $password, $integrator_key, $apiEnvironment);
+$login = $sample->login($username, $password, $integrator_key, $apiEnvironment);
+if($login == false){
+    return;
+}
 
 // Request statuses of recent Envelopes
 $sample->listEnvelopeStatuses($sample->apiClient, $sample->accountId);
