@@ -96,7 +96,6 @@ class DocuSignSample
         // call the listDocuments API to get a list of documents
         $documents = $envelopeApi->listDocuments($accountId, $envelopeId);
         if(!empty($documents)){
-            var_dump($documents);
             foreach($documents->getEnvelopeDocuments() as $document){
                 // initiate download of each document
                 $this->downloadEnvelopeDoc($apiClient, $accountId, $envelopeId, $document);
@@ -121,7 +120,7 @@ class DocuSignSample
         $oldName = $savedDoc->getPathname();
         $newName = $envelopeId . "-" . $document->getName().'.pdf';
         rename($oldName, $newName);
-        unlink($oldName);
+        print_r("Saved " . $newName);
 
     }
 
