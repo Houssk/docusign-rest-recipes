@@ -83,7 +83,12 @@ class DocuSignSample
     /////////////////////////////////////////////////////////////////////////////////////
     // Step 2: Create Envelope and Request Signature 
     /////////////////////////////////////////////////////////////////////////////////////
-    public function signatureRequestOnDocument($apiClient, $accountId, $documentFileName, $recipient, $status = "sent")
+    public function signatureRequestOnDocument(
+        $apiClient, 
+        $accountId, 
+        $documentFileName, 
+        $recipient, 
+        $status = "sent")
     {
 
         $documentName = "PHPSignTest1";
