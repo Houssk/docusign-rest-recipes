@@ -51,6 +51,9 @@ namespace TestProj
             //*** TEST 9 - Embedded DocuSign Console          
             //ViewUrl consoleView = recipes.createEmbeddedConsoleViewTest();
 
+            //*** TEST 10 - Request Payment      
+            // EnvelopeSummary envSummary = recipes.requestPaymentOnDocumentTest();
+
             Console.Read();
         }
 
@@ -593,6 +596,125 @@ namespace TestProj
             return viewUrl;
 
         } // end createEmbeddedConsoleViewTest()
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        public EnvelopeSummary requestPaymentOnDocumentTest()
+        {
+            // Enter your DocuSign credentials below.  Note: You only need a DocuSign account to SEND documents,
+            // signing is always free and signers do not need an account.
+            string username = "[EMAIL]";
+            string password = "[PASSWORD]";
+
+            // Enter recipient (signer) name and email address
+            string recipientName = "[RECIPIENT_NAME]";
+            string recipientEmail = "[RECIPIENT_EMAIL]";
+
+            string paymentGatewayId = "[PAYMENT_GATEWAY_ID]";
+
+            // the document (file) we want signed
+            const string SignTest1File = @"[PATH/TO/DOCUMENT/TEST.PDF]";
+
+            // instantiate api client with appropriate environment (for production change to www.docusign.net/restapi)
+            configureApiClient("https://demo.docusign.net/restapi");
+
+            //===========================================================
+            // Step 1: Login()
+            //===========================================================
+
+            // call the Login() API which sets the user's baseUrl and returns their accountId
+            string accountId = loginApi(username, password);
+
+            //===========================================================
+            // Step 2: Payment Request (AKA create & send Envelope)
+            //===========================================================
+
+            // Read a file from disk to use as a document.
+            byte[] fileBytes = File.ReadAllBytes(SignTest1File);
+
+            EnvelopeDefinition envDef = new EnvelopeDefinition();
+            envDef.EmailSubject = "[DocuSign C# SDK] - Please Pay on this doc";
+
+            // Add a document to the envelope
+            Document doc = new Document();
+            doc.DocumentBase64 = System.Convert.ToBase64String(fileBytes);
+            doc.Name = "TestFile.pdf";
+            doc.DocumentId = "1";
+
+            envDef.Documents = new List<Document>();
+            envDef.Documents.Add(doc);
+
+            // Add a recipient to sign the documeent
+            Signer signer = new Signer();
+            signer.Email = recipientEmail;
+            signer.Name = recipientName;
+            signer.RecipientId = "1";
+
+            // Create a NumberTab to hold payment information
+            signer.Tabs = new Tabs();
+            signer.Tabs.NumberTabs = new List<Number>();
+            Number numberTab = new Number();
+            numberTab.DocumentId = "1";
+            numberTab.PageNumber = "1";
+            numberTab.RecipientId = "1";
+            numberTab.XPosition = "100";
+            numberTab.YPosition = "100";
+            numberTab.TabLabel = "tabvalue1";
+            numberTab.Value = "10.00";
+            numberTab.Locked = "true";
+
+            signer.Tabs.NumberTabs.Add(numberTab);
+
+            // Create a FormulaTab to hold the payment, references NumberTab for amounts of lineItems
+            signer.Tabs = new Tabs();
+            signer.Tabs.FormulaTabs = new List<FormulaTab>();
+            FormulaTab formulaTab = new FormulaTab();
+            formulaTab.Required = "true";
+            formulaTab.DocumentId = "1";
+            formulaTab.PageNumber = "1";
+            formulaTab.RecipientId = "1";
+            formulaTab.XPosition = "1"; // placement doesnt really matter, it doesnt show up
+            formulaTab.YPosition = "1"; // placement doesnt really matter, it doesnt show up
+            formulaTab.TabLabel = "tabpayment1";
+
+            formulaTab.Formula = "[tabvalue1] * 100";
+            formulaTab.RoundDecimalPlaces = "2";
+
+            // Create LineItems 
+            // - this is what will show up on receipts, credit card statements, and in your Payment Gateway 
+            PaymentLineItem lineItem = new PaymentLineItem();
+            lineItem.Name = 'Name1';
+            lineItem.Description = 'description1';
+            lineItem.ItemCode = 'ITEM1';
+            lineItem.AmountReference = 'tabvalue1';
+
+            PaymentDetails paymentDetails = new PaymentDetails();
+            paymentDetails.CurrencyCode = 'USD';
+            paymentDetails.GatewayAccountId = paymentGatewayId;
+
+            paymentDetails.LineItems = new List<PaymentLineItem>();
+            paymentDetails.LineItems.Add(lineItem);
+
+            formulaTab.PaymentDetails = paymentDetails;
+
+            signer.Tabs.FormulaTabs.Add(formulaTab);
+
+            envDef.Recipients = new Recipients();
+            envDef.Recipients.Signers = new List<Signer>();
+            envDef.Recipients.Signers.Add(signer);
+
+            // set envelope status to "sent" to immediately send the signature request
+            envDef.Status = "sent";
+
+            // |EnvelopesApi| contains methods related to creating and sending Envelopes (aka signature requests)
+            EnvelopesApi envelopesApi = new EnvelopesApi();
+            EnvelopeSummary envelopeSummary = envelopesApi.CreateEnvelope(accountId, envDef);
+
+            // print the JSON response
+            Console.WriteLine("EnvelopeSummary:\n{0}", JsonConvert.SerializeObject(envelopeSummary));
+
+            return envelopeSummary;
+
+        } // end requestPaymentOnDocumentTest()
 
 
 

@@ -981,6 +981,178 @@ public class CoreRecipes {
         }
     } // end EmbeddedConsole()
     
+    /*****************************************************************************************************************
+     * RequestPaymentOnDocument()
+     * 
+     * This recipe demonstrates how to request a payment on a document by first making the 
+     * Login API call then the Create Envelope API call.  
+     ******************************************************************************************************************/
+    public void RequestPaymentOnDocument() {
+        
+        // TODO: Enter signer information and path to a test file
+        String signerName = "[SIGNER_NAME]";
+        String signerEmail = "[SIGNER_EMAIL]";
+        String paymentGatewayId = "[PAYMENT_GATEWAY_ID]";
+        // point to a local document for testing
+        final String SignTest1File = "[PATH/TO/DOCUMENT/TEST.PDF]";     
+        
+        // initialize the api client
+        ApiClient apiClient = new ApiClient();
+        apiClient.setBasePath(BaseUrl);
+        
+        // create JSON formatted auth header
+        String creds = "{\"Username\":\"" +  UserName + "\",\"Password\":\"" +  Password + "\",\"IntegratorKey\":\"" +  IntegratorKey + "\"}";
+        apiClient.addDefaultHeader("X-DocuSign-Authentication", creds);
+        
+        // assign api client to the Configuration object
+        Configuration.setDefaultApiClient(apiClient);
+        
+        // list of user account(s)
+        List<LoginAccount> loginAccounts = null;
+        
+        //===============================================================================
+        // Step 1:  Login() API
+        //===============================================================================
+        try
+        {
+            // login call available off the AuthenticationApi
+            AuthenticationApi authApi = new AuthenticationApi();
+            
+            // login has some optional parameters we can set
+            AuthenticationApi.LoginOptions loginOps = authApi.new LoginOptions();
+            loginOps.setApiPassword("true");
+            loginOps.setIncludeAccountIdGuid("true");
+            LoginInformation loginInfo = authApi.login(loginOps);
+            
+            // note that a given user may be a member of multiple accounts
+            loginAccounts = loginInfo.getLoginAccounts();
+            
+            System.out.println("LoginInformation: " + loginAccounts);
+        }
+        catch (com.docusign.esign.client.ApiException ex)
+        {
+            System.out.println("Exception: " + ex);
+        }
+
+        //===============================================================================
+        // Step 2:  Create Envelope API (AKA Payment Request)
+        //===============================================================================
+        
+        // create a byte array that will hold our document bytes
+        byte[] fileBytes = null;
+        
+        try
+        {
+            String currentDir = System.getProperty("user.dir");
+            // read file from a local directory
+            Path path = Paths.get(currentDir + SignTest1File);
+            fileBytes = Files.readAllBytes(path);
+        }
+        catch (IOException ioExcp)
+        {
+            // handle error
+            System.out.println("Exception: " + ioExcp);
+            return;
+        }
+        
+        // create an envelope that will store the document(s), field(s), and recipient(s)
+        EnvelopeDefinition envDef = new EnvelopeDefinition();
+        envDef.setEmailSubject("Please pay on this document sent from Java SDK)");
+        
+        // add a document to the envelope
+        Document doc = new Document();  
+        String base64Doc = Base64.getEncoder().encodeToString(fileBytes);
+        doc.setDocumentBase64(base64Doc);
+        doc.setName("TestFile.pdf");    // can be different from actual file name
+        doc.setDocumentId("1");
+        
+        List<Document> docs = new ArrayList<Document>();
+        docs.add(doc);
+        envDef.setDocuments(docs);
+        
+        // add a recipient to sign the document, identified by name and email we used above
+        Signer signer = new Signer();
+        signer.setEmail(signerEmail);
+        signer.setName(signerName);
+        signer.setRecipientId("1");
+        
+        Number num = new Number();
+        num.setDocumentId("1");
+        num.setPageNumber("1");
+        num.setRecipientId("1");
+        num.setXPosition("100");
+        num.setYPosition("100");
+        num.setTabLabel("tabvalue1");
+        num.setValue("10.00");
+        num.setLocked("true");
+        
+        FormulaTab formula = new FormulaTab();
+        formula.setDocumentId("1");
+        formula.setPageNumber("1");
+        formula.setRecipientId("1");
+        formula.setXPosition("1");
+        formula.setYPosition("1");
+        formula.setTabLabel("tabpayment1");
+        formula.setRequired("true");
+
+        formula.setFormula("[tabvalue1] * 100");
+        formula.setRoundDecimalPlaces("2");
+        
+        PaymentLineItem lineItem = new PaymentLineItem();
+        lineItem.setName("Name1");
+        lineItem.setDescription("description1");
+        lineItem.setItemCode("ITEM1");
+        lineItem.setAmountReference("tabvalue1");
+            
+        PaymentDetails paymentDetails = new PaymentDetails();
+        paymentDetails.setCurrencyCode("USD");
+        paymentDetails.setGatewayAccountId(paymentGatewayId);
+        
+        List<PaymentLineItem> lineItems = new ArrayList<PaymentLineItem>();
+        lineItems.add(lineItem);
+        paymentDetails.setLineItems(lineItems);
+        
+        formula.setPaymentDetails(paymentDetails);
+        
+        
+        // can have multiple tabs, so need to add to envelope as a single element list
+        List<Number> numberTabs = new ArrayList<Number>();
+        List<FormulaTab> formulaTabs = new ArrayList<FormulaTab>();
+        numberTabs.add(num);
+        formulaTabs.add(formula);
+        Tabs tabs = new Tabs();
+        tabs.setNumberTabs(numberTabs);
+        tabs.setFormulaTabs(formulaTabs);
+        signer.setTabs(tabs);
+        
+        // add recipients (in this case a single signer) to the envelope
+        envDef.setRecipients(new Recipients());
+        envDef.getRecipients().setSigners(new ArrayList<Signer>());
+        envDef.getRecipients().getSigners().add(signer);
+        
+        // send the envelope by setting |status| to "sent". To save as a draft set to "created"
+        envDef.setStatus("sent");
+        
+        
+        try
+        {
+            // use the |accountId| we retrieved through the Login API to create the Envelope
+            String accountId = loginAccounts.get(0).getAccountId();
+            
+            // instantiate a new EnvelopesApi object
+            EnvelopesApi envelopesApi = new EnvelopesApi();
+            
+            // call the createEnvelope() API
+            EnvelopeSummary envelopeSummary = envelopesApi.createEnvelope(accountId, envDef);
+            
+            System.out.println("EnvelopeSummary: " + envelopeSummary);
+        }
+        catch (com.docusign.esign.client.ApiException ex)
+        {
+            System.out.println("Exception: " + ex);
+        } 
+    } // end RequestSignatureOnDocument()
+
     //*****************************************************************
     //*****************************************************************
     // main() - 
@@ -1033,6 +1205,11 @@ public class CoreRecipes {
         // Test #9
 //        System.out.println("Running test #9...\n");
 //        recipes.EmbeddedConsole();
+//        System.out.println("\nTest #9 Complete.\n-----------------");
+
+        // Test #10
+//        System.out.println("Running test #10...\n");
+//        recipes.RequestPaymentOnDocument();
 //        System.out.println("\nTest #9 Complete.\n-----------------");
         
     } // end main()

@@ -800,4 +800,145 @@ NSString *BaseUrl = @"https://demo.docusign.net/restapi";
     }]; // end login completion block
 } // end embeddedDSConsole()
 
+//***************************************************************************************************************************************
+// Recipe 10 - requestPaymentOnDocument()
+//***************************************************************************************************************************************
+- (void)requestPaymentOnDocument {
+    
+    // Enter your DocuSign credentials
+    NSString *username = @"<#Username#>";
+    NSString *password = @"<#Password#>";
+    NSString *paymentGatewayId = @"<#PaymentGatewayId#>";
+    
+    // Enter recipient (signer) information
+    NSString *recipientName = @"<#Recipient Name#>";
+    NSString *recipientEmail = @"<#Recipient Email#>";
+    
+    // Enter valid path to document we want signed (hardcoded for demo purposes!)
+    NSString *path = @"<#/Path/To/Document.pdf#>";
+    
+    // create authentication JSON string and header
+    NSString *const DS_AUTH = [NSMutableString stringWithFormat:@"{\"Username\":\"%@\",\"Password\":\"%@\",\"IntegratorKey\":\"%@\"}", username, password, IntegratorKey];
+    NSString *const DS_AUTH_HEADER = @"X-DocuSign-Authentication";
+    
+    ///////////////////////////////////////////////////////////////////////////////
+    // STEP 1: Login API
+    ///////////////////////////////////////////////////////////////////////////////
+    
+    // instantiate api client, configure environment URL and assign auth data
+    DSConfiguration *sharedConfig = [DSConfiguration sharedConfig];
+    sharedConfig.host = BaseUrl;
+    DSAuthenticationApi *authApi = [[DSAuthenticationApi alloc]init];
+    [authApi addHeader:DS_AUTH forKey:DS_AUTH_HEADER];
+    
+    // we will retrieve the accountId through the Login API call, then use that ID when creating an Envelope (aka signature request)
+    __block NSString *accountId = nil;
+    
+    // Login to get the account for the user (if you have the accountId then skip this part)
+    [authApi loginWithCompletionBlock:^(DSLoginInformation *output, NSError *error) {
+        if (error) {
+            NSLog(@"got error %@", error);
+        }
+        if (!output) {
+            NSLog(@"response can't be nil");
+        }
+        
+        DSLoginAccount *loginAccount = [output.loginAccounts objectAtIndex: 0];
+        accountId = loginAccount.accountId;
+        
+        NSLog(@"Account ID: %@", loginAccount.accountId);
+    
+        ///////////////////////////////////////////////////////////////////////////////
+        // STEP 2: Create & Send Envelope (aka signature request)
+        ///////////////////////////////////////////////////////////////////////////////
+        
+        // Create envelope with single document, single signer and one signature tab.
+        DSEnvelopeDefinition *envDef = [[DSEnvelopeDefinition alloc] init];
+        envDef.emailSubject = @"[DocuSign Obj-C SDK] - Please pay on this doc";
+        envDef.emailBlurb = @"Hello, Please make payment on my Objective-C Envelope";
+        
+        DSDocument *doc = [[DSDocument alloc] init];
+        doc.name = @"TestFile.pdf";  // does not have to be same as actual file name
+        doc.documentId = @"1";
+        
+        NSData *myData = [NSData dataWithContentsOfFile:path];
+        doc.documentBase64 = [myData base64EncodedStringWithOptions:0];
+        envDef.documents = [NSArray arrayWithObjects:doc, nil];
+        
+        // Add a recipient to sign the document
+        DSSigner *signer = [[DSSigner alloc] init];
+        signer.email = recipientEmail;
+        signer.name = recipientName;
+        signer.recipientId = @"1";
+        
+        
+        // create a number tab
+        Number *numberTab = [[Number alloc] init];
+        numberTab.documentId = "@1";
+        numberTab.pageNumber = "@1";
+        numberTab.recipientId = "@1";
+        numberTab.xPosition = "@100";
+        numberTab.yPosition = "@100";
+        numberTab.tabLabel = "@tabvalue1";
+        numberTab.value = "@10.00";
+        numberTab.locked = "@true";
+
+        DSPaymentLineItem *lineItem = [[DSPaymentLineItem alloc] init];
+        lineItem.name = "Name1";
+        lineItem.description = "description1";
+        lineItem.itemCode = "ITEM1";
+        lineItem.amountReference = "tabvalue1";
+
+        DSPaymentDetails *paymentDetails = [[DSPaymentDetails alloc] init];
+        paymentDetails.currencyCode = "USD";
+        paymentDetails.gatewayAccountId = paymentGatewayId;
+        paymentDetails.lineItems = [NSArray arrayWithObjects:lineItem, nil];
+
+        DSFormulaTab *formulaTab = [[DSFormulaTab alloc] init];
+        formulaTab.required = "@true";
+        formulaTab.documentId = "@1";
+        formulaTab.pageNumber = "@1";
+        formulaTab.recipientId = "@1";
+        formulaTab.xPosition = "@1"; // placement doesnt really matter, it doesnt show up
+        formulaTab.yPosition = "@1"; // placement doesnt really matter, it doesnt show up
+        formulaTab.tabLabel = "@tabpayment1";
+        formulaTab.formula = "[tabvalue1] * 100";
+        formulaTab.roundDecimalPlaces = "2";
+        formulaTab.paymentDetails = [NSArray arrayWithObjects:paymentDetails, nil];
+
+        
+        // Add tabs to the signer.
+        signer.tabs = [[DSTabs alloc] init];
+        signer.tabs.numberTabs = [NSArray arrayWithObjects:numberTab, nil];
+        signer.tabs.formulaTabs = [NSArray arrayWithObjects:formulaTab, nil];
+        DSRecipients *recipient = [[DSRecipients alloc] init];
+        
+        NSMutableArray<DSSigner> *signers = [[NSMutableArray alloc]init];
+        recipient.signers = signers;
+        [signers addObject: signer];
+        envDef.recipients = recipient;
+        
+        // set status to sent to trigger sending the envelope. Otherwise the envelope will stay in the Drafts folder.
+        envDef.status = @"sent";
+        
+        NSLog(@"Envelope being sent %@", envDef);
+        
+        // create api service and add authentication header
+        DSEnvelopesApi *envelopesApi = [[DSEnvelopesApi alloc] init];
+        [envelopesApi addHeader:DS_AUTH forKey:DS_AUTH_HEADER];
+        
+        // create and send the envelope
+        [envelopesApi createEnvelopeWithCompletionBlock:accountId envelopeDefinition:envDef completionHandler:^(DSEnvelopeSummary *output, NSError *error) {
+            if (error) {
+                NSLog(@"got error %@", error);
+            }
+            if (!output) {
+                NSLog(@"response can't be nil");
+            }
+            NSLog(@"Envelope Sent, ID: %@", output.envelopeId);
+            
+        }];
+    }]; // end login completion block
+} // end requestSignatureOnDocument()
+
 @end
